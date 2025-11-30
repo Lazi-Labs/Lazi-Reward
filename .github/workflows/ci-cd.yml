@@ -123,7 +123,7 @@ jobs:
 
       - name: Deploy to server
         run: |
-          rsync -avz --delete \
+          rsync -avz --delete --omit-dir-times \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='node_modules' \
