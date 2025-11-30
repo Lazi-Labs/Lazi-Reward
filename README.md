@@ -21,8 +21,8 @@ A gift card incentive system for collecting Google reviews. Customers select a b
 
 ```bash
 # Clone the repository
-git clone <repo-url> lazi-coupons
-cd lazi-coupons
+git clone <repo-url> lazi-rewards
+cd lazi-rewards
 
 # Run setup (installs dependencies, creates .env, runs migrations, builds assets)
 composer setup
@@ -41,7 +41,7 @@ This runs concurrently:
 - Log viewer (Pail)
 - Vite dev server
 
-Access the app at `https://lazi-coupons.test` (with Herd) or `http://localhost:8000`.
+Access the app at `https://lazi-rewards.test` (with Herd) or `http://localhost:8000`.
 
 ## Configuration
 
@@ -68,4 +68,3 @@ composer test
 3. **Claim Reward** - Customer returns via unique link to upload a screenshot of their posted review
 
 Submissions trigger webhooks to n8n for processing gift card fulfillment.
-# lazi-rewards

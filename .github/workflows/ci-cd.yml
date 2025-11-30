@@ -136,6 +136,7 @@ jobs:
           ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
             ${{ secrets.APPSYNC_REMOTE_USER }}@${{ vars.APPSYNC_REMOTE_HOST }} \
             "cd ${{ vars.APPSYNC_REMOTE_BASEPATH }} && \
+             composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && \
              php artisan migrate --force && \
              php artisan config:cache && \
              php artisan route:cache && \
