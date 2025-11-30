@@ -114,11 +114,12 @@ jobs:
         run: npm run build
 
       - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ vars.APPSYNC_REMOTE_HOST }} >> ~/.ssh/known_hosts
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known_hosts
+        run: ssh-keyscan -H ${{ vars.APPSYNC_REMOTE_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to server
         run: |
@@ -132,12 +133,12 @@ jobs:
             --exclude='storage/framework/cache/*' \
             --exclude='storage/framework/sessions/*' \
             --exclude='storage/framework/views/*' \
-            -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no" \
+            -e "ssh -o StrictHostKeyChecking=no" \
             ./ ${{ secrets.APPSYNC_REMOTE_USER }}@${{ vars.APPSYNC_REMOTE_HOST }}:${{ vars.APPSYNC_REMOTE_BASEPATH }}/
 
       - name: Run post-deploy commands
         run: |
-          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no \
+          ssh -o StrictHostKeyChecking=no \
             ${{ secrets.APPSYNC_REMOTE_USER }}@${{ vars.APPSYNC_REMOTE_HOST }} \
             "cd ${{ vars.APPSYNC_REMOTE_BASEPATH }} && \
              composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && \
