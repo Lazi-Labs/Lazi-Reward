@@ -8,7 +8,7 @@ A gift card incentive system for collecting Google reviews. Customers select a b
 - **Livewire 3** - Reactive components
 - **Flux UI Pro** - Component library
 - **Tailwind CSS 4** - Styling
-- **SQLite** - Database
+- **MySQL** - Database
 
 ## Requirements
 
@@ -21,7 +21,7 @@ A gift card incentive system for collecting Google reviews. Customers select a b
 
 ```bash
 # Clone the repository
-git clone <repo-url> lazi-rewards
+git clone https://github.com/portseif/lazi-rewards.git lazi-rewards
 cd lazi-rewards
 
 # Run setup (installs dependencies, creates .env, runs migrations, builds assets)

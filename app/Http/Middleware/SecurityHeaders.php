@@ -41,13 +41,17 @@ class SecurityHeaders
 
     protected function buildContentSecurityPolicy(): string
     {
+        $viteDevServer = app()->environment('local')
+            ? ' https://lazi-rewards.test:5173 https://lazi-rewards.test:5174 wss://lazi-rewards.test:5173 wss://lazi-rewards.test:5174'
+            : '';
+
         $policies = [
             "default-src" => "'self'",
-            "script-src" => "'self' 'unsafe-inline' 'unsafe-eval'",
-            "style-src" => "'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com",
+            "script-src" => "'self' 'unsafe-inline' 'unsafe-eval'" . $viteDevServer,
+            "style-src" => "'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com" . $viteDevServer,
             "font-src" => "'self' https://fonts.bunny.net https://fonts.gstatic.com data:",
             "img-src" => "'self' data: blob: https:",
-            "connect-src" => "'self'",
+            "connect-src" => "'self'" . $viteDevServer,
             "frame-ancestors" => "'self'",
             "form-action" => "'self'",
             "base-uri" => "'self'",
