@@ -28,6 +28,9 @@ php artisan test tests/Feature/ExampleTest.php
 
 # Build for production
 npm run build
+
+# Create admin user for Filament
+php artisan make:filament-user
 ```
 
 ## Architecture
@@ -82,7 +85,7 @@ Reusable components in `resources/views/components/`:
 | `security-badge` | Security trust badge |
 
 ### Tech Stack
-- Laravel 12 with MySQL
+- Laravel 12 with MySQL (PHP 8.3+)
 - Livewire 3 for reactive components
 - Filament v3 for admin panel
 - Flux UI (Pro) for component library - use `<flux:component.subcomponent>` syntax (e.g., `<flux:select.option>`)

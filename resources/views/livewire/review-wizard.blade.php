@@ -15,15 +15,30 @@
         </div>
 
         {{-- Location cards --}}
-        <div wire:loading.remove wire:target="selectLocation" class="grid grid-cols-1 gap-4 mt-8">
-          @foreach ($locations as $loc)
-            <x-location-card
-              :key="$loc->id"
-              :name="$loc->name"
-              :description="$loc->description"
-              :color="$loc->color"
-            />
-          @endforeach
+        <div wire:loading.remove wire:target="selectLocation" class="mt-8">
+          @if ($locations->isEmpty())
+            {{-- Empty state --}}
+            <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+              <div class="size-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
+                <flux:icon.map-pin class="size-8 text-zinc-400 dark:text-zinc-500"/>
+              </div>
+              <flux:heading size="lg" class="text-zinc-700 dark:text-zinc-300">No Businesses Available</flux:heading>
+              <flux:text class="text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm">
+                There are no businesses set up yet. Please check back later or contact support.
+              </flux:text>
+            </div>
+          @else
+            <div class="grid grid-cols-1 gap-4">
+              @foreach ($locations as $loc)
+                <x-location-card
+                  :key="$loc->id"
+                  :name="$loc->name"
+                  :description="$loc->description"
+                  :color="$loc->color"
+                />
+              @endforeach
+            </div>
+          @endif
         </div>
       </div>
     @elseif ($step === 2)
