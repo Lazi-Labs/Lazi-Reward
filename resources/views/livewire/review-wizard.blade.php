@@ -16,22 +16,18 @@
 
         {{-- Location cards --}}
         <div wire:loading.remove wire:target="selectLocation" class="grid grid-cols-1 gap-4 mt-8">
-          @foreach (config('business.locations') as $key => $business)
+          @foreach ($locations as $loc)
             <x-location-card
-              :key="$key"
-              :name="$business['name']"
-              :description="$business['description']"
-              :color="$business['color']"
+              :key="$loc->id"
+              :name="$loc->name"
+              :description="$loc->description"
+              :color="$loc->color"
             />
           @endforeach
         </div>
       </div>
     @elseif ($step === 2)
       {{-- Step 2: Post Review --}}
-      @php
-        $locationConfig = config("business.locations.{$location}");
-      @endphp
-
       <div class="space-y-6">
         <x-page-header
           :step="2"
@@ -54,23 +50,61 @@
         {{-- Form content --}}
         <div wire:loading.remove wire:target="submit" class="space-y-6">
           <x-location-badge
-            :name="$locationConfig['name']"
-            :color="$locationConfig['color'] ?? 'zinc'"
+            :name="$location->name"
+            :color="$location->color ?? 'zinc'"
           />
 
-          <x-review-box :review="$locationConfig['review']"/>
+          {{-- Service Photo Upload --}}
+          <x-card>
+            <div class="space-y-3">
+              <flux:heading size="sm">Upload a Photo of Your Service</flux:heading>
+              <flux:text class="text-sm text-zinc-500">Please upload a photo showing the service that was completed.</flux:text>
+
+              <div x-data="{ uploading: false, uploaded: {{ $servicePhoto ? 'true' : 'false' }} }"
+                   x-on:livewire-upload-start="uploading = true"
+                   x-on:livewire-upload-finish="uploading = false; uploaded = true"
+                   x-on:livewire-upload-error="uploading = false">
+                <flux:file-upload wire:model="servicePhoto" accept="image/*" :invalid="$errors->has('servicePhoto')">
+                  <flux:file-upload.dropzone class="cursor-pointer"
+                    heading="Drop your photo here or click to browse"
+                    text="JPG or PNG up to 10MB"
+                    with-progress
+                  />
+                </flux:file-upload>
+
+                @if ($servicePhoto)
+                  <flux:file-item
+                    :heading="$servicePhoto->getClientOriginalName()"
+                    :image="$servicePhoto->temporaryUrl()"
+                    :size="$servicePhoto->getSize()"
+                    class="mt-4"
+                  >
+                    <x-slot name="actions">
+                      <flux:file-item.remove wire:click="removeServicePhoto" x-on:click="uploaded = false"/>
+                    </x-slot>
+                  </flux:file-item>
+                @endif
+
+                @error('servicePhoto')
+                  <flux:text class="text-sm text-red-500 mt-2">{{ $message }}</flux:text>
+                @enderror
+              </div>
+            </div>
+          </x-card>
+
+          <x-review-box :review="$location->review_template"/>
 
           <form wire:submit="submit" class="space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <flux:input wire:model="name" label="Full Name" placeholder="John Doe" required/>
-              <flux:input wire:model="email" label="Email Address" type="email" placeholder="john@example.com" required/>
+              <flux:input wire:model.blur="name" label="Full Name" placeholder="John Doe" required :invalid="$errors->has('name')"/>
+              <flux:input wire:model.blur="email" label="Email Address" type="email" placeholder="john@example.com" required :invalid="$errors->has('email')"/>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <flux:input wire:model="phone" type="phone" label="Phone Number" placeholder="(555) 123-4567" mask="(999) 999-9999" required/>
-              <flux:select wire:model="giftCard" variant="listbox" label="Choose Your Reward" placeholder="Select a gift card..." class="cursor-pointer">
-                @foreach (config('business.gift_cards') as $key => $label)
-                  <flux:select.option value="{{ $key }}">{{ $label }}</flux:select.option>
+              <flux:input wire:model.blur="phone" label="Phone Number" placeholder="(555) 123-4567" mask="(999) 999-9999" required :invalid="$errors->has('phone')"/>
+              <flux:select wire:model.live="giftCard" variant="listbox" label="Choose Your Reward" placeholder="Select a gift card..." class="cursor-pointer" :invalid="$errors->has('giftCard')">
+                @foreach ($giftCards as $card)
+                  <flux:select.option value="{{ $card->id }}">{{ $card->name }}</flux:select.option>
                 @endforeach
               </flux:select>
             </div>

@@ -30,7 +30,7 @@
 
       <x-card wire:loading.remove wire:target="save">
         <form wire:submit="save" x-data="{ uploading: false, uploaded: {{ $photo ? 'true' : 'false' }} }" x-on:livewire-upload-start="uploading = true" x-on:livewire-upload-finish="uploading = false; uploaded = true" x-on:livewire-upload-error="uploading = false">
-          <flux:file-upload wire:model="photo" accept="image/*">
+          <flux:file-upload wire:model="photo" accept="image/*" :invalid="$errors->has('photo')">
             <flux:file-upload.dropzone class="cursor-pointer"
               heading="Drop your screenshot here or click to browse"
               text="JPG or PNG up to 10MB"
@@ -50,6 +50,10 @@
               </x-slot>
             </flux:file-item>
           @endif
+
+          @error('photo')
+            <flux:text class="text-sm text-red-500 mt-2">{{ $message }}</flux:text>
+          @enderror
 
           <flux:button icon:trailing="gift" type="submit" variant="primary" class="w-full sm:w-auto px-8 mt-6 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer" ::disabled="uploading || !uploaded" :loading="false">
             Submit & Claim Reward

@@ -14,6 +14,9 @@ composer setup
 # Run tests
 composer test
 
+# Lint code
+./vendor/bin/pint
+
 # Individual commands
 php artisan serve          # Start Laravel server
 npm run dev               # Vite dev server
@@ -29,20 +32,35 @@ npm run build
 
 ## Architecture
 
-This is a Laravel 12 + Livewire 3 + Flux UI application for collecting Google reviews in exchange for gift cards.
+This is a Laravel 12 + Livewire 3 + Flux UI + Filament application for collecting Google reviews in exchange for gift cards.
 
 ### Core Flow
 1. User visits homepage → `ReviewWizard` component (step 1: select business location)
-2. User selects location → step 2: copy pre-written review, enter contact details, choose gift card
-3. Form submission → creates `Submission` record, sends webhook to n8n, redirects to Google Business Profile
+2. User selects location → step 2: upload service photo, copy pre-written review, enter contact details, choose gift card
+3. Form submission → creates `Submission` record, sends webhook to n8n, opens Google Business Profile in new tab while redirecting to upload page
 4. User returns via token URL → `ScreenshotUpload` component to upload review screenshot
 5. Screenshot upload → updates submission, sends webhook to n8n
 
+### Key Models
+- `BusinessLocation` - Business locations with GMB links, review templates (UUID, managed via admin)
+- `GiftCard` - Gift card options (UUID, managed via admin)
+- `Submission` - Customer submissions with photos (UUID, relationships to location and gift card)
+- `User` - Admin users for Filament panel
+
 ### Key Files
-- `config/business.php` - Business locations, GMB links, pre-written reviews, gift card options, n8n webhook URLs
+- `config/business.php` - Webhook URLs only (locations/gift cards now in database)
 - `app/Livewire/ReviewWizard.php` - Multi-step form wizard
 - `app/Livewire/ScreenshotUpload.php` - Screenshot upload with token validation
-- `app/Models/Submission.php` - UUID-based model tracking submissions
+- `app/Filament/Resources/` - Admin panel resources
+
+### Admin Panel (Filament)
+Access at `/admin` with any registered user.
+
+**Resources:**
+- `SubmissionResource` - View/manage customer submissions with status, photos
+- `BusinessLocationResource` - CRUD for business locations (Settings group)
+- `GiftCardResource` - CRUD for gift card options (Settings group)
+- `UserResource` - Manage admin users (Settings group)
 
 ### Blade Components
 
@@ -66,6 +84,7 @@ Reusable components in `resources/views/components/`:
 ### Tech Stack
 - Laravel 12 with MySQL
 - Livewire 3 for reactive components
+- Filament v3 for admin panel
 - Flux UI (Pro) for component library - use `<flux:component.subcomponent>` syntax (e.g., `<flux:select.option>`)
 - Tailwind CSS 4
 - Laravel Herd for local dev (uses `.test` domain)
@@ -89,6 +108,7 @@ GitHub Actions workflow in `.github/workflows/ci-cd.yml`:
 - `SSH_PRIVATE_KEY` - SSH key for deployment
 - `APPSYNC_REMOTE_USER` - SSH username
 - `APPSYNC_REMOTE_DBPASSWORD` - Production DB password
+- `COMPOSER_AUTH` - Flux UI Pro credentials (JSON format)
 
 ### Required Variables
 - `APPSYNC_REMOTE_HOST` - Server IP
