@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   test:
@@ -30,9 +30,12 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, dom, fileinfo, mysql, libxml, xml, xmlwriter, pdo_mysql
           coverage: none
+
+      - name: Verify PHP version
+        run: php -v
 
       - name: Get Composer cache directory
         id: composer-cache
@@ -93,8 +96,11 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: '8.3'
           extensions: mbstring, dom, fileinfo, mysql, libxml, xml, xmlwriter, pdo_mysql
+
+      - name: Verify PHP version
+        run: php -v
 
       - name: Install Composer dependencies
         env:
