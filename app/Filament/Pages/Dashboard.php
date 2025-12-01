@@ -25,26 +25,26 @@ class Dashboard extends BaseDashboard
 
 	public string $activeTab = 'overview';
 
-	public static function routes(\Filament\Panel $panel): void
+	public static function routes( \Filament\Panel $panel ): void
 	{
 		// Route for /admin (overview)
-		\Illuminate\Support\Facades\Route::get('/', static::class)
-			->middleware(static::getRouteMiddleware($panel))
-			->withoutMiddleware(static::getWithoutRouteMiddleware($panel))
-			->name('dashboard');
+		\Illuminate\Support\Facades\Route::get( '/', static::class )
+																		 ->middleware( static::getRouteMiddleware( $panel ) )
+																		 ->withoutMiddleware( static::getWithoutRouteMiddleware( $panel ) )
+																		 ->name( 'dashboard' );
 
 		// Routes for /admin/{tab}
-		\Illuminate\Support\Facades\Route::get('/{tab}', static::class)
-			->middleware(static::getRouteMiddleware($panel))
-			->withoutMiddleware(static::getWithoutRouteMiddleware($panel))
-			->where('tab', 'analytics|activity')
-			->name('dashboard.tab');
+		\Illuminate\Support\Facades\Route::get( '/{tab}', static::class )
+																		 ->middleware( static::getRouteMiddleware( $panel ) )
+																		 ->withoutMiddleware( static::getWithoutRouteMiddleware( $panel ) )
+																		 ->where( 'tab', 'analytics|activity' )
+																		 ->name( 'dashboard.tab' );
 	}
 
 	public function mount(): void
 	{
-		$tab = request()->route('tab');
-		$this->activeTab = in_array($tab, ['analytics', 'activity']) ? $tab : 'overview';
+		$tab             = request()->route( 'tab' );
+		$this->activeTab = in_array( $tab, [ 'analytics', 'activity' ] ) ? $tab : 'overview';
 	}
 
 	public function getTitle(): string|Htmlable
@@ -78,6 +78,6 @@ class Dashboard extends BaseDashboard
 	public function setActiveTab( string $tab ): void
 	{
 		$url = $tab === 'overview' ? '/admin' : "/admin/$tab";
-		$this->redirect($url);
+		$this->redirect( $url );
 	}
 }
