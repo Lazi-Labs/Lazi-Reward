@@ -18,7 +18,7 @@
         <div wire:loading.remove wire:target="selectLocation" class="mt-8">
           @if ($locations->isEmpty())
             {{-- Empty state --}}
-            <div class="flex flex-col items-center justify-center py-12 px-6 text-center">
+            <div class="flex flex-col items-center justify-center py-12 px-6 text-center bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
               <div class="size-16 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
                 <flux:icon.map-pin class="size-8 text-zinc-400 dark:text-zinc-500"/>
               </div>
