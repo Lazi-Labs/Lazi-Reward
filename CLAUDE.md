@@ -38,20 +38,20 @@ php artisan make:filament-user
 This is a Laravel 12 + Livewire 3 + Flux UI + Filament application for collecting Google reviews in exchange for gift cards.
 
 ### Core Flow
-1. User visits homepage → `ReviewWizard` component (step 1: select business location)
-2. User selects location → step 2: upload service photo, copy pre-written review, enter contact details, choose gift card
+1. User visits homepage → `ReviewWizard` component (step 1: select business)
+2. User selects business → step 2: upload service photo, copy pre-written review, enter contact details, choose gift card
 3. Form submission → creates `Submission` record, sends webhook to n8n, opens Google Business Profile in new tab while redirecting to upload page
 4. User returns via token URL → `ScreenshotUpload` component to upload review screenshot
 5. Screenshot upload → updates submission, sends webhook to n8n
 
 ### Key Models
-- `BusinessLocation` - Business locations with GMB links, review templates (UUID, managed via admin)
+- `Business` - Businesses with GMB links, review templates (UUID, managed via admin)
 - `GiftCard` - Gift card options (UUID, managed via admin)
-- `Submission` - Customer submissions with photos (UUID, relationships to location and gift card)
+- `Submission` - Customer submissions with photos (UUID, relationships to business and gift card)
 - `User` - Admin users for Filament panel
 
 ### Key Files
-- `config/business.php` - Webhook URLs only (locations/gift cards now in database)
+- `config/business.php` - Webhook URLs only (businesses/gift cards now in database)
 - `app/Livewire/ReviewWizard.php` - Multi-step form wizard
 - `app/Livewire/ScreenshotUpload.php` - Screenshot upload with token validation
 - `app/Filament/Resources/` - Admin panel resources
@@ -61,7 +61,7 @@ Access at `/admin` with any registered user.
 
 **Resources:**
 - `SubmissionResource` - View/manage customer submissions with status, photos
-- `BusinessLocationResource` - CRUD for business locations (Settings group)
+- `BusinessResource` - CRUD for businesses (Settings group)
 - `GiftCardResource` - CRUD for gift card options (Settings group)
 - `UserResource` - Manage admin users (Settings group)
 
@@ -76,8 +76,8 @@ Reusable components in `resources/views/components/`:
 | `wizard.step` | Individual step item in the sidebar |
 | `page-header` | Step indicator badge + heading + description |
 | `card` | Generic card wrapper with border |
-| `location-card` | Business location selection button |
-| `location-badge` | Selected location badge with dismiss button |
+| `location-card` | Business selection button |
+| `location-badge` | Selected business badge with dismiss button |
 | `review-box` | Copyable review text box |
 | `alert` | Alert/notice box (warning, info, success types) |
 | `success-card` | Success confirmation with icon |

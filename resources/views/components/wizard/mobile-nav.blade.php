@@ -5,7 +5,7 @@
 
 @php
     $steps = [
-        1 => ['title' => 'Select Location', 'icon' => 'map-pin'],
+        1 => ['title' => 'Select Business', 'icon' => 'map-pin'],
         2 => ['title' => 'Post Review', 'icon' => 'pencil-square'],
         3 => ['title' => 'Claim Reward', 'icon' => 'gift'],
     ];

@@ -14,7 +14,7 @@ class Submission extends Model
         'name',
         'email',
         'phone',
-        'business_location_id',
+        'business_id',
         'gift_card_id',
         'business_key',
         'gift_card_choice',
@@ -24,9 +24,9 @@ class Submission extends Model
         'service_photo_path',
     ];
 
-    public function businessLocation(): BelongsTo
+    public function business(): BelongsTo
     {
-        return $this->belongsTo(BusinessLocation::class);
+        return $this->belongsTo(Business::class);
     }
 
     public function giftCard(): BelongsTo

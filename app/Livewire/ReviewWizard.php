@@ -2,7 +2,7 @@
 
 namespace App\Livewire;
 
-use App\Models\BusinessLocation;
+use App\Models\Business;
 use App\Models\GiftCard;
 use App\Models\Submission;
 use Illuminate\Support\Facades\Http;
@@ -19,7 +19,7 @@ class ReviewWizard extends Component
 
     public $step = 1;
     public $locationId = '';
-    public $location = null; // Will hold the BusinessLocation model
+    public $location = null; // Will hold the Business model
 
     #[Validate('required|image|mimes:jpeg,png,webp|max:10240', message: 'Please upload a photo (JPEG, PNG, or WebP, max 10MB).', onUpdate: false)]
     public $servicePhoto;
@@ -39,7 +39,7 @@ class ReviewWizard extends Component
     public function selectLocation($id)
     {
         $this->locationId = $id;
-        $this->location = BusinessLocation::find($id);
+        $this->location = Business::find($id);
         $this->step = 2;
     }
 
@@ -94,7 +94,7 @@ class ReviewWizard extends Component
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'business_location_id' => $this->locationId,
+            'business_id' => $this->locationId,
             'gift_card_id' => $this->giftCard,
             'business_key' => $this->location->key,
             'gift_card_choice' => $giftCardModel?->key ?? '',
@@ -132,7 +132,7 @@ class ReviewWizard extends Component
     public function render()
     {
         return view('livewire.review-wizard', [
-            'locations' => BusinessLocation::active()->ordered()->get(),
+            'locations' => Business::active()->ordered()->get(),
             'giftCards' => GiftCard::active()->ordered()->get(),
         ]);
     }

@@ -44,9 +44,9 @@ class SubmissionResource extends Resource
 
                 Forms\Components\Section::make('Submission Details')
                     ->schema([
-                        Forms\Components\Select::make('business_location_id')
+                        Forms\Components\Select::make('business_id')
                             ->label('Business')
-                            ->relationship('businessLocation', 'name')
+                            ->relationship('business', 'name')
                             ->searchable()
                             ->preload(),
                         Forms\Components\Select::make('gift_card_id')
@@ -104,7 +104,7 @@ class SubmissionResource extends Resource
 
                 Infolists\Components\Section::make('Submission Details')
                     ->schema([
-                        Infolists\Components\TextEntry::make('businessLocation.name')
+                        Infolists\Components\TextEntry::make('business.name')
                             ->label('Business')
                             ->badge(),
                         Infolists\Components\TextEntry::make('giftCard.name')
@@ -160,7 +160,7 @@ class SubmissionResource extends Resource
                 Tables\Columns\TextColumn::make('phone')
                     ->searchable()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('businessLocation.name')
+                Tables\Columns\TextColumn::make('business.name')
                     ->label('Business')
                     ->sortable()
                     ->badge(),
@@ -198,8 +198,8 @@ class SubmissionResource extends Resource
                         'waiting_for_screenshot' => 'Waiting for Screenshot',
                         'completed' => 'Completed',
                     ]),
-                Tables\Filters\SelectFilter::make('business_location_id')
-                    ->relationship('businessLocation', 'name')
+                Tables\Filters\SelectFilter::make('business_id')
+                    ->relationship('business', 'name')
                     ->label('Business')
                     ->preload(),
                 Tables\Filters\SelectFilter::make('gift_card_id')

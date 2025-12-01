@@ -10,7 +10,7 @@
       :step="1"
       :current="$step"
       :completed="$completed"
-      title="Select Location"
+      title="Select Business"
       description="Choose which business serviced you."
       icon="map-pin"
       :show-line="true"

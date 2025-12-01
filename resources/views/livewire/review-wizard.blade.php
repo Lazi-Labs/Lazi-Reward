@@ -1,11 +1,11 @@
 <div x-data x-on:open-gmb-link.window="window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl;">
   <x-wizard.layout :step="$step">
     @if ($step === 1)
-      {{-- Step 1: Select Location --}}
+      {{-- Step 1: Select Business --}}
       <div class="space-y-6">
         <x-page-header
           :step="1"
-          title="Select Your Location"
+          title="Select Your Business"
           description="Choose the business you visited. This helps us direct your review to the right place."
         />
 
@@ -14,7 +14,7 @@
           <x-skeletons.review-form/>
         </div>
 
-        {{-- Location cards --}}
+        {{-- Business cards --}}
         <div wire:loading.remove wire:target="selectLocation" class="mt-8">
           @if ($locations->isEmpty())
             {{-- Empty state --}}

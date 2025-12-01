@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\BusinessLocation;
+use App\Models\Business;
 use App\Models\GiftCard;
 use App\Models\Submission;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;

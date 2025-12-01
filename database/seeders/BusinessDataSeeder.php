@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\BusinessLocation;
+use App\Models\Business;
 use App\Models\GiftCard;
 use Illuminate\Database\Seeder;
 
@@ -48,7 +48,7 @@ class BusinessDataSeeder extends Seeder
         ];
 
         foreach ($locations as $location) {
-            BusinessLocation::updateOrCreate(
+            Business::updateOrCreate(
                 ['key' => $location['key']],
                 $location
             );

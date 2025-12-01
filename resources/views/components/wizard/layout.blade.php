@@ -5,7 +5,7 @@
 
 <div>
   <div class="max-w-5xl mx-auto">
-    <div class="pt-12 pb-8 lg:pb-16">
+    <div class="py-8 lg:pb-16">
       <flux:heading size="xl" level="1" class="text-center text-3xl">Get your gift card in 3 easy steps</flux:heading>
       <flux:text size="lg" class="text-center text-zinc-500 dark:text-zinc-400">Fill out the form, post a review, and claim your reward.</flux:text>
     </div>

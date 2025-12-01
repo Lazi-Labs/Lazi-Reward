@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\BusinessLocation;
+use App\Models\Business;
 use Filament\Widgets\ChartWidget;
 
 class BusinessBreakdown extends ChartWidget
@@ -13,7 +13,7 @@ class BusinessBreakdown extends ChartWidget
 
     protected function getData(): array
     {
-        $businesses = BusinessLocation::withCount('submissions')
+        $businesses = Business::withCount('submissions')
             ->orderByDesc('submissions_count')
             ->get();
 
