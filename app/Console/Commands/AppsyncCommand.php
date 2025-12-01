@@ -215,7 +215,9 @@ class AppsyncCommand extends Command
 				$this->info( 'Backup saved to: ' . $remoteBackupFile );
 
 				$this->info( 'Dumping local database...' );
-				$this->dumpLocalDatabase( $localDbHost, $localDbPort, $localDbUser, $localDbPassword, $localDbName, $localDumpFile );
+				if ( !$this->dumpLocalDatabase( $localDbHost, $localDbPort, $localDbUser, $localDbPassword, $localDbName, $localDumpFile ) ) {
+					return;
+				}
 
 				$this->info( 'Uploading dump file to production...' );
 				if ( !$this->scpPush( $remoteUser, $remoteHost, $sshPort, $sshKeyPath, $localDumpFile, $remoteDumpFile ) ) {
@@ -277,7 +279,9 @@ class AppsyncCommand extends Command
 				$this->info( 'Backup saved to: ' . $remoteBackupFile );
 
 				$this->info( 'Dumping local tables...' );
-				$this->dumpLocalDatabase( $localDbHost, $localDbPort, $localDbUser, $localDbPassword, $localDbName, $localDumpFile, $tableList );
+				if ( !$this->dumpLocalDatabase( $localDbHost, $localDbPort, $localDbUser, $localDbPassword, $localDbName, $localDumpFile, $tableList ) ) {
+					return;
+				}
 
 				$this->info( 'Uploading dump file to production...' );
 				if ( !$this->scpPush( $remoteUser, $remoteHost, $sshPort, $sshKeyPath, $localDumpFile, $remoteDumpFile ) ) {
@@ -401,19 +405,21 @@ class AppsyncCommand extends Command
 
 	protected function scpPush( $user, $host, $port, $keyPath, $localFilePath, $remoteFilePath ): bool
 	{
-		$scpCommand = sprintf(
-			'scp -o PasswordAuthentication=no -o PubkeyAuthentication=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -i %s -P %d %s %s@%s:%s 2>&1',
+		// Use rsync for single file upload (more reliable than scp on some servers)
+		$remoteDir = dirname( $remoteFilePath );
+		$rsyncCommand = sprintf(
+			'rsync -avz -e "ssh -o PasswordAuthentication=no -o PubkeyAuthentication=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=no -i %s -p %d" %s %s@%s:%s/ 2>&1',
 			escapeshellarg( $keyPath ),
 			$port,
 			escapeshellarg( $localFilePath ),
 			escapeshellarg( $user ),
 			escapeshellarg( $host ),
-			escapeshellarg( $remoteFilePath ),
+			escapeshellarg( $remoteDir ),
 		);
-		exec( $scpCommand, $output, $exitCode );
+		exec( $rsyncCommand, $output, $exitCode );
 
 		if ( $exitCode !== 0 ) {
-			$this->error( 'SCP upload failed with exit code: ' . $exitCode );
+			$this->error( 'File upload failed with exit code: ' . $exitCode );
 			$this->error( implode( "\n", $output ) );
 			return false;
 		}
@@ -445,13 +451,13 @@ class AppsyncCommand extends Command
 		exec( $importCommand );
 	}
 
-	protected function dumpLocalDatabase( $host, $port, $user, $password, $database, $outputFile, $tables = [] ): void
+	protected function dumpLocalDatabase( $host, $port, $user, $password, $database, $outputFile, $tables = [] ): bool
 	{
 		$tableString = !empty( $tables ) ? implode( ' ', array_map( 'escapeshellarg', $tables ) ) : '';
 
 		if ( empty( $password ) ) {
 			$dumpCommand = sprintf(
-				'mysqldump -h %s -P %d -u %s %s %s > %s',
+				'mysqldump -h %s -P %d -u %s %s %s > %s 2>&1',
 				escapeshellarg( $host ),
 				$port,
 				escapeshellarg( $user ),
@@ -461,7 +467,7 @@ class AppsyncCommand extends Command
 			);
 		} else {
 			$dumpCommand = sprintf(
-				'mysqldump -h %s -P %d -u %s -p%s %s %s > %s',
+				'mysqldump -h %s -P %d -u %s -p%s %s %s > %s 2>&1',
 				escapeshellarg( $host ),
 				$port,
 				escapeshellarg( $user ),
@@ -471,7 +477,37 @@ class AppsyncCommand extends Command
 				escapeshellarg( $outputFile ),
 			);
 		}
-		exec( $dumpCommand );
+		exec( $dumpCommand, $output, $exitCode );
+
+		if ( $exitCode !== 0 ) {
+			$this->error( 'Local database dump failed with exit code: ' . $exitCode );
+			$this->error( implode( "\n", $output ) );
+			return false;
+		}
+
+		if ( !file_exists( $outputFile ) ) {
+			$this->error( 'Local dump file was not created: ' . $outputFile );
+			return false;
+		}
+
+		$fileSize = filesize( $outputFile );
+		if ( $fileSize === 0 ) {
+			$this->error( 'Local dump file is empty: ' . $outputFile );
+			return false;
+		}
+
+		$this->line( '  Dump file size: ' . $this->formatBytes( $fileSize ) );
+		return true;
+	}
+
+	protected function formatBytes( $bytes, $precision = 2 ): string
+	{
+		$units = [ 'B', 'KB', 'MB', 'GB' ];
+		$bytes = max( $bytes, 0 );
+		$pow   = floor( ( $bytes ? log( $bytes ) : 0 ) / log( 1024 ) );
+		$pow   = min( $pow, count( $units ) - 1 );
+		$bytes /= pow( 1024, $pow );
+		return round( $bytes, $precision ) . ' ' . $units[ $pow ];
 	}
 
 	protected function cleanupLocalDump( $localDumpFile ): void

@@ -103,24 +103,27 @@ class ReviewWizard extends Component
             'service_photo_path' => $servicePhotoPath,
         ]);
 
-        // Send to n8n
-        try {
-            Http::post(config('business.webhooks.submission'), [
-                'id' => $submission->id,
-                'name' => $this->name,
-                'email' => $this->email,
-                'phone' => $this->phone,
-                'business_name' => $this->location->name,
-                'business_key' => $this->location->key,
-                'gift_card_name' => $giftCardModel?->name ?? '',
-                'gift_card_choice' => $giftCardModel?->key ?? '',
-                'token' => $token,
-                'upload_url' => route('upload', ['token' => $token]),
-                'service_photo_url' => asset('storage/' . $servicePhotoPath),
-            ]);
-        } catch (\Exception $e) {
-            // Log error but continue
-            report($e);
+        // Send to n8n (if webhook URL is configured)
+        $webhookUrl = config('business.webhooks.submission');
+        if ($webhookUrl) {
+            try {
+                Http::post($webhookUrl, [
+                    'id' => $submission->id,
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'phone' => $this->phone,
+                    'business_name' => $this->location->name,
+                    'business_key' => $this->location->key,
+                    'gift_card_name' => $giftCardModel?->name ?? '',
+                    'gift_card_choice' => $giftCardModel?->key ?? '',
+                    'token' => $token,
+                    'upload_url' => route('upload', ['token' => $token]),
+                    'service_photo_url' => asset('storage/' . $servicePhotoPath),
+                ]);
+            } catch (\Exception $e) {
+                // Log error but continue
+                report($e);
+            }
         }
 
         $uploadUrl = route('upload', ['token' => $token]);

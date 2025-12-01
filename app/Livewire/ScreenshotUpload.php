@@ -69,15 +69,19 @@ class ScreenshotUpload extends Component
             'status' => 'completed',
         ]);
 
-        // Send to n8n
-        try {
-            Http::post(config('business.webhooks.upload'), [
-                'id' => $this->submission->id,
-                'token' => $this->token,
-                'screenshot_url' => asset('storage/' . $path),
-            ]);
-        } catch (\Exception $e) {
-            // Log error
+        // Send to n8n (if webhook URL is configured)
+        $webhookUrl = config('business.webhooks.upload');
+        if ($webhookUrl) {
+            try {
+                Http::post($webhookUrl, [
+                    'id' => $this->submission->id,
+                    'token' => $this->token,
+                    'screenshot_url' => asset('storage/' . $path),
+                ]);
+            } catch (\Exception $e) {
+                // Log error but continue
+                report($e);
+            }
         }
 
         $this->uploaded = true;
