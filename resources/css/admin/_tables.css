@@ -1,0 +1,54 @@
+/**
+ * Table Styles
+ * Table header, filters, rows, and dropdowns
+ */
+
+/* Table Header - inline search with heading */
+.fi-ta-header-ctn {
+  @apply flex flex-wrap items-center justify-between gap-4 p-4 pl-6;
+}
+
+.fi-ta-header-ctn > * {
+  @apply p-0!;
+}
+
+.fi-ta-header-toolbar {
+  @apply border-t-0!;
+}
+
+/* Filters above content - cleaner toolbar style */
+.fi-ta-filters {
+  @apply bg-zinc-50 border border-zinc-200 rounded-xl py-3 px-4;
+}
+
+.dark .fi-ta-filters {
+  background: transparent;
+  border: none;
+  box-shadow: none !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-offset-color: transparent !important;
+}
+
+.dark .fi-dropdown-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 1rem;
+  --tw-ring-offset-color: transparent !important;
+  --tw-ring-offset-shadow: 0 0 #0000 !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+  outline: none !important;
+}
+
+.fi-ta-filters .fi-fo-field-wrp {
+  @apply m-0;
+}
+
+.fi-ta-filters .fi-select-trigger {
+  @apply bg-white rounded-lg min-w-[200px];
+}
+
+.dark .fi-ta-filters .fi-select-trigger {
+  background: rgba(255, 255, 255, 0.05);
+}
+

@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Exception;
 use App\Models\Submission;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -78,7 +79,7 @@ class ScreenshotUpload extends Component
                     'token' => $this->token,
                     'screenshot_url' => asset('storage/' . $path),
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Log error but continue
                 report($e);
             }

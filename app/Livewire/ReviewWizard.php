@@ -2,6 +2,7 @@
 
 namespace App\Livewire;
 
+use Exception;
 use App\Models\Business;
 use App\Models\GiftCard;
 use App\Models\Photo;
@@ -117,7 +118,7 @@ class ReviewWizard extends Component
                     'upload_url' => route('upload', ['token' => $token]),
                     'service_photo_url' => $servicePhotoPath ? asset('storage/'.$servicePhotoPath) : null,
                 ]);
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // Log error but continue
                 report($e);
             }

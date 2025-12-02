@@ -2,6 +2,9 @@
 
 namespace App\Filament\Widgets;
 
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Actions\Action;
 use App\Filament\Resources\SubmissionResource;
 use App\Models\Submission;
 use Filament\Tables;
@@ -21,18 +24,18 @@ class ActivityFeed extends BaseWidget
                 Submission::query()->latest('updated_at')->limit(20)
             )
             ->columns([
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->label('Time')
                     ->dateTime('M j, g:i A')
                     ->sortable()
                     ->description(fn (Submission $record) => $record->updated_at->diffForHumans()),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->description(fn (Submission $record) => $record->email),
-                Tables\Columns\TextColumn::make('businessLocation.name')
+                TextColumn::make('businessLocation.name')
                     ->label('Business')
                     ->badge(),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'gray',
@@ -46,19 +49,19 @@ class ActivityFeed extends BaseWidget
                         'completed' => 'Completed',
                         default => $state,
                     }),
-                Tables\Columns\ImageColumn::make('service_photo_path')
+                ImageColumn::make('service_photo_path')
                     ->label('Photo')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn () => null),
-                Tables\Columns\ImageColumn::make('screenshot_path')
+                ImageColumn::make('screenshot_path')
                     ->label('Screenshot')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn () => null),
             ])
-            ->actions([
-                Tables\Actions\Action::make('view')
+            ->recordActions([
+                Action::make('view')
                     ->url(fn (Submission $record): string => SubmissionResource::getUrl('view', ['record' => $record]))
                     ->icon('heroicon-m-eye'),
             ])

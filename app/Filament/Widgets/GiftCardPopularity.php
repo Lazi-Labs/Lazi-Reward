@@ -7,9 +7,9 @@ use Filament\Widgets\ChartWidget;
 
 class GiftCardPopularity extends ChartWidget
 {
-    protected static ?string $heading = 'Gift Card Popularity';
+    protected ?string $heading = 'Gift Card Popularity';
 
-    protected static ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {

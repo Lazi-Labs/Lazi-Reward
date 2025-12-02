@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use Filament\Actions\Action;
 use App\Models\Submission;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -28,7 +29,7 @@ class ScreenshotUploadedNotification extends Notification
             ->iconColor('success')
             ->body("{$this->submission->name} uploaded their review screenshot")
             ->actions([
-                \Filament\Notifications\Actions\Action::make('view')
+                Action::make('view')
                     ->label('Review')
                     ->url(route('filament.admin.resources.submissions.view', $this->submission))
                     ->markAsRead(),

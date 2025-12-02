@@ -8,7 +8,7 @@ use Illuminate\Support\Carbon;
 
 class SubmissionsChart extends ChartWidget
 {
-    protected static ?string $heading = 'Submissions (Last 7 Days)';
+    protected ?string $heading = 'Submissions (Last 7 Days)';
 
     protected int|string|array $columnSpan = 'full';
 

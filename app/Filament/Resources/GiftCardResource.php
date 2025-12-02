@@ -2,10 +2,22 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\GiftCardResource\Pages\ListGiftCards;
+use App\Filament\Resources\GiftCardResource\Pages\CreateGiftCard;
+use App\Filament\Resources\GiftCardResource\Pages\EditGiftCard;
 use App\Filament\Resources\GiftCardResource\Pages;
 use App\Models\GiftCard;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,35 +26,35 @@ class GiftCardResource extends Resource
 {
     protected static ?string $model = GiftCard::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-gift';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-gift';
 
-    protected static ?string $activeNavigationIcon = 'heroicon-s-gift';
+    protected static string | \BackedEnum | null $activeNavigationIcon = 'heroicon-s-gift';
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'Settings';
+    protected static string | \UnitEnum | null $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 2;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make()
+        return $schema
+            ->components([
+                Section::make()
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('key')
+                        TextInput::make('key')
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true)
                             ->helperText('Unique identifier (e.g., "amazon", "visa")'),
-                        Forms\Components\TextInput::make('sort_order')
+                        TextInput::make('sort_order')
                             ->required()
                             ->numeric()
                             ->default(0),
-                        Forms\Components\Toggle::make('is_active')
+                        Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
                     ])->columns(2),
@@ -53,37 +65,37 @@ class GiftCardResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('key')
+                TextColumn::make('key')
                     ->searchable()
                     ->badge()
                     ->color('gray'),
-                Tables\Columns\IconColumn::make('is_active')
+                IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
-                Tables\Columns\TextColumn::make('sort_order')
+                TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('submissions_count')
+                TextColumn::make('submissions_count')
                     ->counts('submissions')
                     ->label('Submissions'),
             ])
             ->defaultSort('sort_order')
             ->reorderable('sort_order')
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
+                TernaryFilter::make('is_active')
                     ->label('Active'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
+            ->recordActions([
+                EditAction::make()
                     ->iconButton()
                     ->color('gray'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -98,9 +110,9 @@ class GiftCardResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListGiftCards::route('/'),
-            'create' => Pages\CreateGiftCard::route('/create'),
-            'edit' => Pages\EditGiftCard::route('/{record}/edit'),
+            'index' => ListGiftCards::route('/'),
+            'create' => CreateGiftCard::route('/create'),
+            'edit' => EditGiftCard::route('/{record}/edit'),
         ];
     }
 }

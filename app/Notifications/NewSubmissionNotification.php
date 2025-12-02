@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use Filament\Actions\Action;
 use App\Models\Submission;
 use Filament\Notifications\Notification as FilamentNotification;
 use Illuminate\Bus\Queueable;
@@ -27,7 +28,7 @@ class NewSubmissionNotification extends Notification
             ->icon('heroicon-o-document-text')
             ->body("{$this->submission->name} submitted a review for {$this->submission->business->name}")
             ->actions([
-                \Filament\Notifications\Actions\Action::make('view')
+                Action::make('view')
                     ->label('View')
                     ->url(route('filament.admin.resources.submissions.view', $this->submission))
                     ->markAsRead(),

@@ -1,0 +1,43 @@
+/**
+ * Sidebar Styles
+ * Navigation, toggle button, and sidebar items
+ */
+
+/* Sidebar Toggle - custom icon */
+.fi-sidebar-header .fi-icon-btn .fi-icon-btn-icon {
+  @apply hidden!;
+}
+
+.fi-sidebar-header .fi-icon-btn::after {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7.5 3.75V16.25M3.4375 16.25H16.5625C17.08 16.25 17.5 15.83 17.5 15.3125V4.6875C17.5 4.17 17.08 3.75 16.5625 3.75H3.4375C2.92 3.75 2.5 4.17 2.5 4.6875V15.3125C2.5 15.83 2.92 16.25 3.4375 16.25Z' stroke='%2371717a' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.dark .fi-sidebar-header .fi-icon-btn::after {
+  background-image: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7.5 3.75V16.25M3.4375 16.25H16.5625C17.08 16.25 17.5 15.83 17.5 15.3125V4.6875C17.5 4.17 17.08 3.75 16.5625 3.75H3.4375C2.92 3.75 2.5 4.17 2.5 4.6875V15.3125C2.5 15.83 2.92 16.25 3.4375 16.25Z' stroke='%23a1a1aa' stroke-width='1.25' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.fi-sidebar-header .fi-icon-btn:hover {
+  @apply bg-zinc-100 rounded-lg;
+}
+
+.dark .fi-sidebar-header .fi-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Sidebar item colors in dark mode */
+.dark .fi-sidebar-item-button {
+  @apply text-zinc-400!;
+}
+
+.dark .fi-sidebar-item-active .fi-sidebar-item-button,
+.dark .fi-sidebar-item-active .fi-sidebar-item-icon,
+.dark .fi-sidebar-item-active .fi-sidebar-item-label {
+  @apply text-white;
+}
+

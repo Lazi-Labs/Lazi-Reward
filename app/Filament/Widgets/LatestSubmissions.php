@@ -2,6 +2,10 @@
 
 namespace App\Filament\Widgets;
 
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Actions\Action;
+use App\Filament\Resources\BusinessResource;
 use App\Filament\Resources\SubmissionResource;
 use App\Models\Submission;
 use Filament\Tables;
@@ -23,16 +27,21 @@ class LatestSubmissions extends BaseWidget
 			->persistSearchInSession()
 			->searchPlaceholder( 'Search...' )
 			->columns( [
-				Tables\Columns\TextColumn::make( 'name' )
+				TextColumn::make( 'name' )
 																 ->searchable(),
-				Tables\Columns\TextColumn::make( 'email' )
+				TextColumn::make( 'email' )
 																 ->searchable(),
-				Tables\Columns\TextColumn::make( 'businessLocation.name' )
+				ImageColumn::make( 'business.avatar' )
 																 ->label( 'Business' )
-																 ->badge(),
-				Tables\Columns\TextColumn::make( 'giftCard.name' )
+																 ->disk( 'public' )
+																 ->circular()
+																 ->defaultImageUrl( fn( $record ) => $record->business ? 'https://ui-avatars.com/api/?name=' . urlencode( $record->business->name ) . '&background=f4f4f5&color=71717a' : null )
+																 ->tooltip( fn( $record ) => $record->business?->name )
+																 ->alignCenter()
+																 ->url( fn( $record ) => $record->business ? BusinessResource::getUrl( 'edit', [ 'record' => $record->business ] ) : null ),
+				TextColumn::make( 'giftCard.name' )
 																 ->label( 'Gift Card' ),
-				Tables\Columns\TextColumn::make( 'status' )
+				TextColumn::make( 'status' )
 																 ->badge()
 																 ->color( fn( string $state ): string => match ( $state ) {
 																	 'pending' => 'gray',
@@ -40,12 +49,12 @@ class LatestSubmissions extends BaseWidget
 																	 'completed' => 'success',
 																	 default => 'gray',
 																 } ),
-				Tables\Columns\TextColumn::make( 'created_at' )
+				TextColumn::make( 'created_at' )
 																 ->dateTime()
 																 ->sortable(),
 			] )
-			->actions( [
-				Tables\Actions\Action::make( 'view' )
+			->recordActions( [
+				Action::make( 'view' )
 														 ->url( fn( Submission $record ): string => SubmissionResource::getUrl( 'view', [ 'record' => $record ] ) )
 														 ->icon( 'heroicon-m-eye' ),
 			] )

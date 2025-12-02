@@ -2,10 +2,23 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\ReviewResource\Pages\ListReviews;
+use App\Filament\Resources\ReviewResource\Pages\CreateReview;
+use App\Filament\Resources\ReviewResource\Pages\EditReview;
+use App\Filament\Resources\BusinessResource;
 use App\Filament\Resources\ReviewResource\Pages;
 use App\Models\Review;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -14,29 +27,29 @@ class ReviewResource extends Resource
 {
     protected static ?string $model = Review::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-chat-bubble-left-right';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chat-bubble-left-right';
 
-    protected static ?string $activeNavigationIcon = 'heroicon-s-chat-bubble-left-right';
+    protected static string | \BackedEnum | null $activeNavigationIcon = 'heroicon-s-chat-bubble-left-right';
 
     protected static ?string $recordTitleAttribute = 'id';
 
-    protected static ?string $navigationGroup = 'Settings';
+    protected static string | \UnitEnum | null $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 3;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make()
+        return $schema
+            ->components([
+                Section::make()
                     ->schema([
-                        Forms\Components\Select::make('business_id')
+                        Select::make('business_id')
                             ->label('Business')
                             ->relationship('business', 'name')
                             ->required()
                             ->searchable()
                             ->preload(),
-                        Forms\Components\Textarea::make('content')
+                        Textarea::make('content')
                             ->required()
                             ->rows(6)
                             ->columnSpanFull(),
@@ -48,31 +61,35 @@ class ReviewResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('business.name')
+                ImageColumn::make('business.avatar')
                     ->label('Business')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('content')
+                    ->disk('public')
+                    ->circular()
+                    ->defaultImageUrl(fn ($record) => $record->business ? 'https://ui-avatars.com/api/?name='.urlencode($record->business->name).'&background=f4f4f5&color=71717a' : null)
+                    ->tooltip(fn ($record) => $record->business?->name)
+                    ->alignCenter()
+                    ->url(fn ($record) => $record->business ? BusinessResource::getUrl('edit', ['record' => $record->business]) : null),
+                TextColumn::make('content')
                     ->searchable()
                     ->limit(50)
                     ->wrap(),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('business')
+                SelectFilter::make('business')
                     ->relationship('business', 'name'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
+            ->recordActions([
+                EditAction::make()
                     ->iconButton()
                     ->color('gray'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -87,9 +104,9 @@ class ReviewResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListReviews::route('/'),
-            'create' => Pages\CreateReview::route('/create'),
-            'edit' => Pages\EditReview::route('/{record}/edit'),
+            'index' => ListReviews::route('/'),
+            'create' => CreateReview::route('/create'),
+            'edit' => EditReview::route('/{record}/edit'),
         ];
     }
 }

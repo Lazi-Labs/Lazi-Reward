@@ -1,0 +1,44 @@
+/**
+ * Global Styles
+ * Dark mode, tooltips, breadcrumbs, and base overrides
+ */
+
+/* Dark mode page background */
+.dark {
+  --gray-950: 0 0 0 !important;
+}
+
+/* Center tooltips */
+[x-tooltip] {
+  @apply text-center;
+}
+
+/* Last breadcrumb item opacity */
+.fi-breadcrumbs-item:last-child .fi-breadcrumbs-item-label {
+  @apply opacity-60;
+}
+
+/* Infolist entry labels */
+.fi-in-entry-wrp-label span {
+  @apply opacity-60! uppercase! text-xs! tracking-wide!;
+}
+
+/* Global Search - keyboard shortcut hint */
+.fi-global-search-field {
+  @apply relative;
+}
+
+.fi-global-search-field::after {
+  content: "⌘K";
+  @apply absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-zinc-400 bg-zinc-100 py-0.5 px-1.5 rounded pointer-events-none;
+}
+
+.dark .fi-global-search-field::after {
+  background: rgba(255, 255, 255, 0.1);
+  @apply text-zinc-500;
+}
+
+.fi-global-search-field:focus-within::after {
+  @apply hidden;
+}
+

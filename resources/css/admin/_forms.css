@@ -1,0 +1,47 @@
+/**
+ * Form Styles
+ * Input focus states, checkboxes, radios, and textareas
+ */
+
+/* Consistent focus styling for inputs in dark mode */
+.dark input:focus,
+.dark input:focus-visible,
+.dark textarea:focus,
+.dark textarea:focus-visible,
+.dark select:focus,
+.dark select:focus-visible,
+.dark [type="text"]:focus,
+.dark [type="email"]:focus,
+.dark [type="url"]:focus,
+.dark [type="password"]:focus,
+.dark [type="number"]:focus,
+.dark [type="date"]:focus,
+.dark [type="search"]:focus {
+  --tw-ring-color: rgb(113 113 122) !important;
+  border-color: rgb(113 113 122) !important;
+}
+
+/* Checkbox and radio focus styling in dark mode */
+.dark [type="checkbox"]:focus,
+.dark [type="checkbox"]:focus-visible,
+.dark [type="radio"]:focus,
+.dark [type="radio"]:focus-visible {
+  --tw-ring-color: rgb(113 113 122) !important;
+  --tw-ring-offset-color: rgb(39 39 42) !important;
+  outline-color: rgb(113 113 122) !important;
+}
+
+/* Dark mode input focus - off-white ring */
+.dark .fi-input:focus,
+.dark .fi-input:focus-within,
+.dark .fi-select-trigger:focus,
+.dark .fi-input-wrp:focus-within {
+  --tw-ring-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.dark .fi-fo-textarea:focus {
+  --tw-ring-color: rgba(255, 255, 255, 0.3) !important;
+  border-color: rgba(255, 255, 255, 0.4) !important;
+}
+

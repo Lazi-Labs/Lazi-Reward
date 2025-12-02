@@ -2,12 +2,30 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\ViewField;
+use Filament\Forms\Components\Placeholder;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\ImageEntry;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Actions\ViewAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\SubmissionResource\Pages\ListSubmissions;
+use App\Filament\Resources\SubmissionResource\Pages\CreateSubmission;
+use App\Filament\Resources\SubmissionResource\Pages\ViewSubmission;
+use App\Filament\Resources\SubmissionResource\Pages\EditSubmission;
+use App\Filament\Resources\BusinessResource;
 use App\Filament\Resources\SubmissionResource\Pages;
 use App\Models\Submission;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Infolists;
-use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -16,9 +34,9 @@ class SubmissionResource extends Resource
 {
     protected static ?string $model = Submission::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-text';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $activeNavigationIcon = 'heroicon-s-document-text';
+    protected static string | \BackedEnum | null $activeNavigationIcon = 'heroicon-s-document-text';
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -36,36 +54,36 @@ class SubmissionResource extends Resource
         return 'warning';
     }
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Customer Information')
+        return $schema
+            ->components([
+                Section::make('Customer Information')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('email')
+                        TextInput::make('email')
                             ->email()
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('phone')
+                        TextInput::make('phone')
                             ->tel()
                             ->maxLength(255),
                     ])->columns(3),
 
-                Forms\Components\Section::make('Submission Details')
+                Section::make('Submission Details')
                     ->schema([
-                        Forms\Components\Select::make('business_id')
+                        Select::make('business_id')
                             ->label('Business')
                             ->relationship('business', 'name')
                             ->searchable()
                             ->preload(),
-                        Forms\Components\Select::make('gift_card_id')
+                        Select::make('gift_card_id')
                             ->relationship('giftCard', 'name')
                             ->searchable()
                             ->preload(),
-                        Forms\Components\Select::make('status')
+                        Select::make('status')
                             ->options([
                                 'pending' => 'Pending',
                                 'waiting_for_screenshot' => 'Waiting for Screenshot',
@@ -75,23 +93,23 @@ class SubmissionResource extends Resource
                             ->default('pending'),
                     ])->columns(3),
 
-                Forms\Components\Section::make('Uploaded Photos')
+                Section::make('Uploaded Photos')
                     ->schema([
-                        Forms\Components\ViewField::make('service_photo_path')
+                        ViewField::make('service_photo_path')
                             ->label('Service Photo')
                             ->view('filament.forms.components.image-display'),
-                        Forms\Components\ViewField::make('screenshot_path')
+                        ViewField::make('screenshot_path')
                             ->label('Review Screenshot')
                             ->view('filament.forms.components.image-display'),
                     ])->columns(2)
                     ->visibleOn(['edit', 'view']),
 
-                Forms\Components\Section::make('System Information')
+                Section::make('System Information')
                     ->schema([
-                        Forms\Components\TextInput::make('token')
+                        TextInput::make('token')
                             ->disabled()
                             ->dehydrated(false),
-                        Forms\Components\Placeholder::make('upload_link')
+                        Placeholder::make('upload_link')
                             ->label('Upload Link')
                             ->content(fn ($record) => $record
                                 ? route('upload', ['token' => $record->token])
@@ -102,26 +120,26 @@ class SubmissionResource extends Resource
             ]);
     }
 
-    public static function infolist(Infolist $infolist): Infolist
+    public static function infolist(Schema $schema): Schema
     {
-        return $infolist
-            ->schema([
-                Infolists\Components\Section::make('Customer Information')
+        return $schema
+            ->components([
+                Section::make('Customer Information')
                     ->schema([
-                        Infolists\Components\TextEntry::make('name'),
-                        Infolists\Components\TextEntry::make('email')
+                        TextEntry::make('name'),
+                        TextEntry::make('email')
                             ->copyable(),
-                        Infolists\Components\TextEntry::make('phone'),
+                        TextEntry::make('phone'),
                     ])->columns(3),
 
-                Infolists\Components\Section::make('Submission Details')
+                Section::make('Submission Details')
                     ->schema([
-                        Infolists\Components\TextEntry::make('business.name')
+                        TextEntry::make('business.name')
                             ->label('Business')
                             ->badge(),
-                        Infolists\Components\TextEntry::make('giftCard.name')
+                        TextEntry::make('giftCard.name')
                             ->label('Gift Card'),
-                        Infolists\Components\TextEntry::make('status')
+                        TextEntry::make('status')
                             ->badge()
                             ->color(fn (string $state): string => match ($state) {
                                 'pending' => 'gray',
@@ -131,27 +149,27 @@ class SubmissionResource extends Resource
                             }),
                     ])->columns(3),
 
-                Infolists\Components\Section::make('Uploaded Photos')
+                Section::make('Uploaded Photos')
                     ->schema([
-                        Infolists\Components\ImageEntry::make('service_photo_path')
+                        ImageEntry::make('service_photo_path')
                             ->label('Service Photo')
                             ->disk('public')
                             ->height(300)
                             ->extraImgAttributes(['class' => 'rounded-lg']),
-                        Infolists\Components\ImageEntry::make('screenshot_path')
+                        ImageEntry::make('screenshot_path')
                             ->label('Review Screenshot')
                             ->disk('public')
                             ->height(300)
                             ->extraImgAttributes(['class' => 'rounded-lg']),
                     ])->columns(2),
 
-                Infolists\Components\Section::make('System Information')
+                Section::make('System Information')
                     ->schema([
-                        Infolists\Components\TextEntry::make('token')
+                        TextEntry::make('token')
                             ->copyable(),
-                        Infolists\Components\TextEntry::make('created_at')
+                        TextEntry::make('created_at')
                             ->dateTime(),
-                        Infolists\Components\TextEntry::make('updated_at')
+                        TextEntry::make('updated_at')
                             ->dateTime(),
                     ])->columns(3)
                     ->collapsed(),
@@ -162,24 +180,28 @@ class SubmissionResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('email')
+                TextColumn::make('email')
                     ->searchable()
                     ->copyable()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('phone')
+                TextColumn::make('phone')
                     ->searchable()
                     ->toggleable(),
-                Tables\Columns\TextColumn::make('business.name')
+                ImageColumn::make('business.avatar')
                     ->label('Business')
-                    ->sortable()
-                    ->badge(),
-                Tables\Columns\TextColumn::make('giftCard.name')
+                    ->disk('public')
+                    ->circular()
+                    ->defaultImageUrl(fn ($record) => $record->business ? 'https://ui-avatars.com/api/?name='.urlencode($record->business->name).'&background=f4f4f5&color=71717a' : null)
+                    ->tooltip(fn ($record) => $record->business?->name)
+                    ->alignCenter()
+                    ->url(fn ($record) => $record->business ? BusinessResource::getUrl('edit', ['record' => $record->business]) : null),
+                TextColumn::make('giftCard.name')
                     ->label('Gift Card')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'pending' => 'gray',
@@ -187,49 +209,51 @@ class SubmissionResource extends Resource
                         'completed' => 'success',
                         default => 'gray',
                     }),
-                Tables\Columns\ImageColumn::make('service_photo_path')
+                ImageColumn::make('service_photo_path')
                     ->label('Photo')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn () => null),
-                Tables\Columns\ImageColumn::make('screenshot_path')
+                ImageColumn::make('screenshot_path')
                     ->label('Screenshot')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn () => null),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
-                Tables\Filters\SelectFilter::make('status')
+                SelectFilter::make('status')
                     ->options([
                         'pending' => 'Pending',
                         'waiting_for_screenshot' => 'Waiting for Screenshot',
                         'completed' => 'Completed',
                     ]),
-                Tables\Filters\SelectFilter::make('business_id')
+                SelectFilter::make('business_id')
                     ->relationship('business', 'name')
                     ->label('Business')
                     ->preload(),
-                Tables\Filters\SelectFilter::make('gift_card_id')
+                SelectFilter::make('gift_card_id')
                     ->relationship('giftCard', 'name')
                     ->label('Gift Card')
                     ->preload(),
             ])
-            ->actions([
-                Tables\Actions\ViewAction::make()
+            ->recordActions([
+                ViewAction::make()
                     ->iconButton()
-                    ->color('gray'),
-                Tables\Actions\EditAction::make()
+                    ->color('gray')
+                    ->tooltip('View'),
+                EditAction::make()
                     ->iconButton()
-                    ->color('gray'),
+                    ->color('gray')
+                    ->tooltip('Edit'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -244,10 +268,10 @@ class SubmissionResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListSubmissions::route('/'),
-            'create' => Pages\CreateSubmission::route('/create'),
-            'view' => Pages\ViewSubmission::route('/{record}'),
-            'edit' => Pages\EditSubmission::route('/{record}/edit'),
+            'index' => ListSubmissions::route('/'),
+            'create' => CreateSubmission::route('/create'),
+            'view' => ViewSubmission::route('/{record}'),
+            'edit' => EditSubmission::route('/{record}/edit'),
         ];
     }
 }

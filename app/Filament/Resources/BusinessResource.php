@@ -2,10 +2,25 @@
 
 namespace App\Filament\Resources;
 
+use Filament\Schemas\Schema;
+use Filament\Schemas\Components\Section;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Toggle;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use App\Filament\Resources\BusinessResource\Pages\ListBusinesses;
+use App\Filament\Resources\BusinessResource\Pages\CreateBusiness;
+use App\Filament\Resources\BusinessResource\Pages\EditBusiness;
 use App\Filament\Resources\BusinessResource\Pages;
 use App\Models\Business;
 use Filament\Forms;
-use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -20,51 +35,51 @@ class BusinessResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Businesses';
 
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+    protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-building-storefront';
 
-    protected static ?string $activeNavigationIcon = 'heroicon-s-building-storefront';
+    protected static string | \BackedEnum | null $activeNavigationIcon = 'heroicon-s-building-storefront';
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?string $navigationGroup = 'Settings';
+    protected static string | \UnitEnum | null $navigationGroup = 'Settings';
 
     protected static ?int $navigationSort = 1;
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('Business Details')
+        return $schema
+            ->components([
+                Section::make('Business Details')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
+                        TextInput::make('name')
                             ->required()
                             ->maxLength(255),
-                        Forms\Components\TextInput::make('key')
+                        TextInput::make('key')
                             ->required()
                             ->maxLength(255)
                             ->unique(ignoreRecord: true)
                             ->helperText('Unique identifier (e.g., "electric", "pools")'),
-                        Forms\Components\TextInput::make('description')
+                        TextInput::make('description')
                             ->maxLength(255)
                             ->helperText('Short description shown to users'),
-                        Forms\Components\TextInput::make('gmb_link')
+                        TextInput::make('gmb_link')
                             ->label('Google My Business Link')
                             ->required()
                             ->url()
                             ->maxLength(255),
                     ])->columns(2),
 
-                Forms\Components\Section::make('Review Template')
+                Section::make('Review Template')
                     ->schema([
-                        Forms\Components\Textarea::make('review_template')
+                        Textarea::make('review_template')
                             ->required()
                             ->rows(4)
                             ->helperText('Pre-written review text for customers to copy'),
                     ]),
 
-                Forms\Components\Section::make('Display Settings')
+                Section::make('Display Settings')
                     ->schema([
-                        Forms\Components\FileUpload::make('avatar')
+                        FileUpload::make('avatar')
                             ->label('Avatar')
                             ->image()
                             ->disk('public')
@@ -72,16 +87,16 @@ class BusinessResource extends Resource
                             ->imageEditor()
                             ->circleCropper()
                             ->helperText('Business logo or avatar image'),
-                        Forms\Components\TextInput::make('icon')
+                        TextInput::make('icon')
                             ->required()
                             ->maxLength(255)
                             ->default('building-storefront')
                             ->helperText('Heroicon name (e.g., "bolt", "lifebuoy")'),
-                        Forms\Components\TextInput::make('sort_order')
+                        TextInput::make('sort_order')
                             ->required()
                             ->numeric()
                             ->default(0),
-                        Forms\Components\Toggle::make('is_active')
+                        Toggle::make('is_active')
                             ->label('Active')
                             ->default(true),
                     ])->columns(4),
@@ -92,40 +107,40 @@ class BusinessResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\ImageColumn::make('avatar')
+                ImageColumn::make('avatar')
                     ->disk('public')
                     ->circular()
                     ->defaultImageUrl(fn (Business $record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=f4f4f5&color=71717a'),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('description')
+                TextColumn::make('description')
                     ->searchable()
                     ->limit(30),
-                Tables\Columns\IconColumn::make('is_active')
+                IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),
-                Tables\Columns\TextColumn::make('sort_order')
+                TextColumn::make('sort_order')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('submissions_count')
+                TextColumn::make('submissions_count')
                     ->counts('submissions')
                     ->label('Submissions'),
             ])
             ->defaultSort('sort_order')
             ->reorderable('sort_order')
             ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
+                TernaryFilter::make('is_active')
                     ->label('Active'),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make()
+            ->recordActions([
+                EditAction::make()
                     ->iconButton()
                     ->color('gray'),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -140,9 +155,9 @@ class BusinessResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBusinesses::route('/'),
-            'create' => Pages\CreateBusiness::route('/create'),
-            'edit' => Pages\EditBusiness::route('/{record}/edit'),
+            'index' => ListBusinesses::route('/'),
+            'create' => CreateBusiness::route('/create'),
+            'edit' => EditBusiness::route('/{record}/edit'),
         ];
     }
 }

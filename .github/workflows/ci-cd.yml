@@ -148,6 +148,7 @@ jobs:
             ${{ secrets.APPSYNC_REMOTE_USER }}@${{ vars.APPSYNC_REMOTE_HOST }} \
             "cd ${{ vars.APPSYNC_REMOTE_BASEPATH }} && \
              composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader && \
+             php artisan filament:assets && \
              php artisan migrate --force && \
              php artisan config:cache && \
              php artisan route:cache && \

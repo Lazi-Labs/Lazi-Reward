@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use Filament\Panel;
 use App\Filament\Widgets\ActivityFeed;
 use App\Filament\Widgets\BusinessBreakdown;
 use App\Filament\Widgets\GiftCardPopularity;
@@ -17,15 +18,15 @@ class Dashboard extends BaseDashboard
 {
 	use HasFiltersForm;
 
-	protected static ?string $navigationIcon = 'heroicon-o-chart-bar';
+	protected static string | \BackedEnum | null $navigationIcon = 'heroicon-o-chart-bar';
 
-	protected static ?string $activeNavigationIcon = 'heroicon-s-chart-bar';
+	protected static string | \BackedEnum | null $activeNavigationIcon = 'heroicon-s-chart-bar';
 
-	protected static string $view = 'filament.pages.dashboard';
+	protected string $view = 'filament.pages.dashboard';
 
 	public string $activeTab = 'overview';
 
-	public static function routes( \Filament\Panel $panel ): void
+	public static function routes( Panel $panel ): void
 	{
 		// Route for /admin (overview)
 		\Illuminate\Support\Facades\Route::get( '/', static::class )
@@ -52,7 +53,7 @@ class Dashboard extends BaseDashboard
 		return 'Dashboard';
 	}
 
-	public function getColumns(): int|string|array
+	public function getColumns(): int|array
 	{
 		return 2;
 	}

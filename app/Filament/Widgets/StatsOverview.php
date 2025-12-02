@@ -16,9 +16,7 @@ class StatsOverview extends BaseWidget
 			Stat::make( 'Total Submissions', Submission::count() )
 					->description( 'All time' )
 					->descriptionIcon( 'heroicon-m-document-text' )
-					->extraAttributes( [
-						'class' => 'bg-zinc-200 dark:bg-zinc-800 rounded-full text-sm',
-					] ),
+					->color( 'gray' ),
 
 			Stat::make( 'Pending', Submission::where( 'status', 'pending' )->count() )
 					->description( 'Awaiting action' )

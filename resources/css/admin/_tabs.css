@@ -1,0 +1,37 @@
+/**
+ * Tab Styles
+ * Dashboard tabs and tab navigation
+ */
+
+.fi-tabs {
+  @apply flex gap-6 border-b border-zinc-200 mb-6;
+}
+
+.dark .fi-tabs {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.fi-tab {
+  @apply py-2 px-0 text-sm font-medium text-zinc-500 bg-transparent border-b-2 border-transparent -mb-px rounded-t-lg transition-all duration-150;
+}
+
+.fi-tab:hover {
+  @apply text-zinc-600;
+}
+
+.dark .fi-tab {
+  @apply text-zinc-400;
+}
+
+.dark .fi-tab:hover {
+  @apply text-zinc-300;
+}
+
+.fi-tab.active {
+  @apply text-zinc-900 border-zinc-500;
+}
+
+.dark .fi-tab.active {
+  @apply text-zinc-50 border-zinc-400;
+}
+

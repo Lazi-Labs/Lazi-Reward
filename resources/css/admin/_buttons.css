@@ -1,0 +1,53 @@
+/**
+ * Button Styles
+ * Primary buttons, links, and action buttons
+ */
+
+/* Dark mode buttons - white bg with primary text */
+.dark .fi-btn.fi-btn-color-primary {
+  @apply bg-white! text-zinc-900!;
+}
+
+.dark .fi-btn.fi-btn-color-primary:hover {
+  @apply bg-zinc-200!;
+}
+
+.dark .fi-btn.fi-btn-color-primary svg {
+  @apply text-zinc-900!;
+}
+
+/* Links as subtle buttons */
+.fi-link,
+.fi-link:hover,
+.fi-link:focus,
+.fi-link span {
+  @apply no-underline!;
+}
+
+.fi-link {
+  @apply py-1.5 px-3 rounded-lg transition-colors duration-150;
+}
+
+.fi-link:hover {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.fi-link.fi-color-danger,
+.fi-ac-action.fi-color-danger {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.fi-link.fi-color-danger:hover,
+.fi-ac-action.fi-color-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.fi-ac-action {
+  @apply rounded-md transition-colors duration-150 mx-0.5;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
+
+.fi-ac-action:hover {
+  background: color-mix(in srgb, currentColor 20%, transparent);
+}
+

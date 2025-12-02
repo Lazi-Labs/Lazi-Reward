@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use mysqli;
+use Exception;
 use Illuminate\Console\Command;
 
 class AppsyncCommand extends Command
@@ -608,7 +610,7 @@ class AppsyncCommand extends Command
 
 		// Try to connect using mysqli
 		try {
-			$mysqli = @new \mysqli( $host, $user, $password ?? '', $database, (int) $port );
+			$mysqli = @new mysqli( $host, $user, $password ?? '', $database, (int) $port );
 
 			if ( $mysqli->connect_error ) {
 				$this->error( '❌ Local database connection failed!' );
@@ -625,7 +627,7 @@ class AppsyncCommand extends Command
 			}
 
 			$mysqli->close();
-		} catch ( \Exception $e ) {
+		} catch ( Exception $e ) {
 			$this->error( '❌ Local database connection failed!' );
 			$this->error( '  Error: ' . $e->getMessage() );
 			return false;

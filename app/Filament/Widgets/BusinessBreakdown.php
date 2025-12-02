@@ -7,9 +7,9 @@ use Filament\Widgets\ChartWidget;
 
 class BusinessBreakdown extends ChartWidget
 {
-    protected static ?string $heading = 'Submissions by Business';
+    protected ?string $heading = 'Submissions by Business';
 
-    protected static ?string $maxHeight = '300px';
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {

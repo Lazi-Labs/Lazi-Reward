@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\PhotoResource\Pages;
 
+use Filament\Actions\Action;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\FileUpload;
 use App\Filament\Resources\PhotoResource;
 use App\Models\Photo;
 use Filament\Actions;
@@ -16,17 +19,17 @@ class ListPhotos extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\Action::make('upload')
+            Action::make('upload')
                 ->label('Upload Photos')
                 ->icon('heroicon-o-arrow-up-tray')
-                ->form([
-                    Forms\Components\Select::make('business_id')
+                ->schema([
+                    Select::make('business_id')
                         ->label('Business')
                         ->relationship('business', 'name')
                         ->required()
                         ->searchable()
                         ->preload(),
-                    Forms\Components\FileUpload::make('photos')
+                    FileUpload::make('photos')
                         ->label('Photos')
                         ->image()
                         ->multiple()
