@@ -16,11 +16,31 @@ class Photo extends Model
         'name',
         'path',
         'alt',
+        'is_used',
+    ];
+
+    protected $casts = [
+        'is_used' => 'boolean',
     ];
 
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function scopeAvailable($query)
+    {
+        return $query->where('is_used', false);
+    }
+
+    public function scopeUsed($query)
+    {
+        return $query->where('is_used', true);
+    }
+
+    public function markAsUsed(): void
+    {
+        $this->update(['is_used' => true]);
     }
 
     public function getUrlAttribute(): ?string

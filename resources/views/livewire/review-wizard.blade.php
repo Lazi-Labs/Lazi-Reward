@@ -69,44 +69,6 @@
             :avatar="$location->avatar"
           />
 
-          {{-- Service Photo Upload --}}
-          <x-card>
-            <div class="space-y-3">
-              <flux:heading size="sm">Upload a Photo of Your Service</flux:heading>
-              <flux:text class="text-sm text-zinc-500">Please upload a photo showing the service that was completed.</flux:text>
-
-              <div x-data="{ uploading: false, uploaded: {{ $servicePhoto ? 'true' : 'false' }} }"
-                   x-on:livewire-upload-start="uploading = true"
-                   x-on:livewire-upload-finish="uploading = false; uploaded = true"
-                   x-on:livewire-upload-error="uploading = false">
-                <flux:file-upload wire:model="servicePhoto" accept="image/*" :invalid="$errors->has('servicePhoto')">
-                  <flux:file-upload.dropzone class="cursor-pointer"
-                    heading="Drop your photo here or click to browse"
-                    text="JPG or PNG up to 10MB"
-                    with-progress
-                  />
-                </flux:file-upload>
-
-                @if ($servicePhoto)
-                  <flux:file-item
-                    :heading="$servicePhoto->getClientOriginalName()"
-                    :image="$servicePhoto->temporaryUrl()"
-                    :size="$servicePhoto->getSize()"
-                    class="mt-4"
-                  >
-                    <x-slot name="actions">
-                      <flux:file-item.remove wire:click="removeServicePhoto" x-on:click="uploaded = false"/>
-                    </x-slot>
-                  </flux:file-item>
-                @endif
-
-                @error('servicePhoto')
-                  <flux:text class="text-sm text-red-500 mt-2">{{ $message }}</flux:text>
-                @enderror
-              </div>
-            </div>
-          </x-card>
-
           <x-review-box :review="$location->review_template"/>
 
           <form wire:submit="submit" class="space-y-5">
