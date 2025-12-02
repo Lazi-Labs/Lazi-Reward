@@ -8,6 +8,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Toggle;
+use Illuminate\Support\HtmlString;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\IconColumn;
@@ -63,10 +64,11 @@ class BusinessResource extends Resource
                             ->maxLength(255)
                             ->helperText('Short description shown to users'),
                         TextInput::make('gmb_link')
-                            ->label('Google My Business Link')
+                            ->label('Google Reviews Link')
                             ->required()
                             ->url()
-                            ->maxLength(255),
+                            ->helperText(new HtmlString('Use <a href="https://developers.google.com/maps/documentation/javascript/examples/places-placeid-finder" target="_blank" class="text-primary-600 hover:underline">Place ID Finder</a> → <code class="bg-gray-100 dark:bg-gray-800 px-1 rounded">https://search.google.com/local/writereview?placeid=YOUR_PLACE_ID</code>'))
+                            ->maxLength(500),
                     ])->columns(2),
 
                 Section::make('Review Template')

@@ -2,14 +2,19 @@
   x-data="{
     reviewText: '',
     photoUrl: '',
+    photoDownloaded: {{ $selectedPhoto ? 'false' : 'true' }},
+    reviewCopied: false,
     init() {
       this.reviewText = this.$refs.reviewTextContent?.innerText || '';
       this.photoUrl = '{{ $selectedPhoto?->url ?? '' }}';
     },
-    async copyAndSubmit() {
-      // Copy review text to clipboard
+    get canProceed() {
+      return this.photoDownloaded && this.reviewCopied;
+    },
+    copyReview() {
       if (this.reviewText) {
-        await navigator.clipboard.writeText(this.reviewText);
+        navigator.clipboard.writeText(this.reviewText);
+        this.reviewCopied = true;
         $flux.toast({ heading: 'Review Copied!', text: 'Review text copied to clipboard', variant: 'success' });
       }
     },
@@ -22,9 +27,11 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      this.photoDownloaded = true;
+      $flux.toast({ heading: 'Photo Saved!', text: 'Photo downloaded to your device', variant: 'success' });
     }
   }"
-  x-on:open-gmb-link.window="copyAndSubmit().then(() => { window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl; })"
+  x-on:open-gmb-link.window="window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl;"
 >
   <x-wizard.layout :step="$step">
     @if ($step === 1)
@@ -97,37 +104,43 @@
           />
 
           @if ($selectedPhoto)
-            <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group">
-              <img
-                src="{{ $selectedPhoto->url }}"
-                alt="{{ $selectedPhoto->alt ?? 'Service photo from ' . $location->name }}"
-                class="w-full h-48 sm:h-64 object-cover"
-              />
-              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <flux:button
-                  size="sm"
-                  variant="filled"
-                  icon="arrow-down-tray"
-                  class="cursor-pointer"
-                  @click="downloadPhoto()"
-                >
-                  Save Photo
-                </flux:button>
+            <div class="space-y-3">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Step 1: Save Photo</span>
+                  <template x-if="photoDownloaded">
+                    <span class="inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+                      <flux:icon.check-circle class="size-4" />
+                      Saved
+                    </span>
+                  </template>
+                </div>
               </div>
-              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex items-center justify-between">
-                <p class="text-white text-sm font-medium">Upload this photo with your review</p>
-                <flux:button
-                  size="xs"
-                  variant="ghost"
-                  icon="arrow-down-tray"
-                  class="cursor-pointer text-white hover:bg-white/20 sm:hidden"
-                  @click="downloadPhoto()"
+              <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700" :class="photoDownloaded ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-zinc-900' : ''">
+                <img
+                  src="{{ $selectedPhoto->url }}"
+                  alt="{{ $selectedPhoto->alt ?? 'Service photo from ' . $location->name }}"
+                  class="w-full h-48 sm:h-64 object-cover"
                 />
+                <div class="absolute inset-0 bg-black/50 flex items-center justify-center" x-show="!photoDownloaded">
+                  <flux:button
+                    variant="filled"
+                    icon="arrow-down-tray"
+                    class="cursor-pointer"
+                    @click="downloadPhoto()"
+                  >
+                    Save Photo to Device
+                  </flux:button>
+                </div>
+                <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                  <p class="text-white text-sm font-medium" x-show="!photoDownloaded">You'll upload this photo with your Google review</p>
+                  <p class="text-white text-sm font-medium" x-show="photoDownloaded">Photo saved! You'll upload it to Google.</p>
+                </div>
               </div>
             </div>
           @endif
 
-          <x-review-box :review="$location->review_template"/>
+          <x-review-box :review="$location->review_template" :show-step="true"/>
 
           <form wire:submit="submit" class="space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -144,18 +157,47 @@
               </flux:select>
             </div>
 
-            <x-alert type="info" icon="clipboard-document-list" title="How it works">
-              <ol class="list-decimal list-inside space-y-1 mt-1">
-                <li><strong>Save the photo</strong> above (hover and click "Save Photo")</li>
-                <li>Click "Continue" — we'll copy the review text for you</li>
-                <li>On Google: <strong>paste the review</strong> and <strong>upload the photo</strong></li>
-                <li><strong>Take a screenshot</strong> of your posted review</li>
-                <li>Return here to upload your screenshot and claim your gift card</li>
-              </ol>
-            </x-alert>
+            {{-- Progress checklist --}}
+            <div x-show="!canProceed" class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+              <div class="flex items-start gap-3">
+                <flux:icon.exclamation-triangle class="size-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5"/>
+                <div>
+                  <p class="text-sm font-medium text-amber-800 dark:text-amber-300">Complete these steps before continuing:</p>
+                  <ul class="mt-2 space-y-1">
+                    @if ($selectedPhoto)
+                      <li class="flex items-center gap-2 text-sm" :class="photoDownloaded ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'">
+                        <flux:icon.check-circle x-show="photoDownloaded" class="size-4"/>
+                        <flux:icon.x-circle x-show="!photoDownloaded" class="size-4"/>
+                        <span>Save the photo</span>
+                      </li>
+                    @endif
+                    <li class="flex items-center gap-2 text-sm" :class="reviewCopied ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'">
+                      <flux:icon.check-circle x-show="reviewCopied" class="size-4"/>
+                      <flux:icon.x-circle x-show="!reviewCopied" class="size-4"/>
+                      <span>Copy the review text</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {{-- Success state --}}
+            <div x-show="canProceed" x-cloak class="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl">
+              <div class="flex items-center gap-3">
+                <flux:icon.check-circle class="size-5 text-green-600 dark:text-green-400"/>
+                <p class="text-sm font-medium text-green-800 dark:text-green-300">Ready! Click continue to open Google Reviews. Paste the review and upload your saved photo.</p>
+              </div>
+            </div>
 
             <div class="pt-2">
-              <flux:button icon:trailing="arrow-right" type="submit" variant="primary" class="w-full sm:w-auto px-8 cursor-pointer">
+              <flux:button
+                icon:trailing="arrow-right"
+                type="submit"
+                variant="primary"
+                class="w-full sm:w-auto px-8"
+                ::class="canProceed ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
+                ::disabled="!canProceed"
+              >
                 <span wire:loading.remove wire:target="submit">Continue to Google Reviews</span>
                 <span wire:loading wire:target="submit">Redirecting...</span>
               </flux:button>
