@@ -84,20 +84,8 @@
           description="Save the photo, fill in your details, and we'll copy the review text and open Google for you."
         />
 
-        {{-- Loading skeleton for form submission --}}
-        <div wire:loading wire:target="submit" class="w-full">
-          <flux:skeleton.group animate="shimmer" class="space-y-4 w-full">
-            <div class="flex items-center justify-center py-12">
-              <div class="text-center space-y-4">
-                <flux:icon.arrow-path class="size-8 text-accent animate-spin mx-auto"/>
-                <p class="text-zinc-500 dark:text-zinc-400">Redirecting to Google Reviews...</p>
-              </div>
-            </div>
-          </flux:skeleton.group>
-        </div>
-
         {{-- Form content --}}
-        <div wire:loading.remove wire:target="submit" class="space-y-6">
+        <div class="space-y-6">
           <x-location-badge
             :name="$location->name"
             :avatar="$location->avatar"
@@ -197,9 +185,9 @@
                 class="w-full sm:w-auto px-8"
                 ::class="canProceed ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'"
                 ::disabled="!canProceed"
+                :loading="false"
               >
-                <span wire:loading.remove wire:target="submit">Continue to Google Reviews</span>
-                <span wire:loading wire:target="submit">Redirecting...</span>
+                Continue to Google Reviews
               </flux:button>
             </div>
           </form>
