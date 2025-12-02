@@ -12,7 +12,6 @@ use App\Filament\Widgets\SubmissionsChart;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
 use Illuminate\Contracts\Support\Htmlable;
-use Illuminate\Routing\Route;
 
 class Dashboard extends BaseDashboard
 {
@@ -86,5 +85,13 @@ class Dashboard extends BaseDashboard
 	{
 		$url = $tab === 'overview' ? '/admin' : "/admin/$tab";
 		$this->redirect( $url );
+	}
+
+	public static function getNavigationItemActiveRoutePattern(): array|string
+	{
+		return [
+			'filament.admin.pages.dashboard',
+			'filament.admin.pages.dashboard.tab',
+		];
 	}
 }

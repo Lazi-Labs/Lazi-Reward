@@ -4,7 +4,8 @@
  */
 
 .fi-tabs {
-  @apply flex gap-6 border-b border-zinc-200 mb-6;
+  @apply flex gap-6 rounded-none bg-transparent p-0 -mb-2 w-full shadow-none;
+  @apply ring-0 border-b border-zinc-200;
 }
 
 .dark .fi-tabs {

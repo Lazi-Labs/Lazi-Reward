@@ -12,8 +12,16 @@
   @apply p-0!;
 }
 
-.fi-ta-header-toolbar {
-  @apply border-t-0!;
+.fi-ta-header-toolbar, .fi-ta-header {
+  @apply border-0!;
+}
+
+thead {
+  @apply border-t;
+}
+
+.fi-ta-header-cell {
+  @apply text-[0.7rem] uppercase tracking-wider text-zinc-500;
 }
 
 /* Filters above content - cleaner toolbar style */
