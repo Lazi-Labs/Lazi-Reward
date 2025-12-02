@@ -1,4 +1,31 @@
-<div x-data x-on:open-gmb-link.window="window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl;">
+<div
+  x-data="{
+    reviewText: '',
+    photoUrl: '',
+    init() {
+      this.reviewText = this.$refs.reviewTextContent?.innerText || '';
+      this.photoUrl = '{{ $selectedPhoto?->url ?? '' }}';
+    },
+    async copyAndSubmit() {
+      // Copy review text to clipboard
+      if (this.reviewText) {
+        await navigator.clipboard.writeText(this.reviewText);
+        $flux.toast({ heading: 'Review Copied!', text: 'Review text copied to clipboard', variant: 'success' });
+      }
+    },
+    downloadPhoto() {
+      if (!this.photoUrl) return;
+      const link = document.createElement('a');
+      link.href = this.photoUrl;
+      link.download = 'review-photo.jpg';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  }"
+  x-on:open-gmb-link.window="copyAndSubmit().then(() => { window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl; })"
+>
   <x-wizard.layout :step="$step">
     @if ($step === 1)
       {{-- Step 1: Select Business --}}
@@ -47,7 +74,7 @@
         <x-page-header
           :step="2"
           title="Post Your Review"
-          description="Copy the review below, fill in your details, and you'll be redirected to Google."
+          description="Save the photo, fill in your details, and we'll copy the review text and open Google for you."
         />
 
         {{-- Loading skeleton for form submission --}}
@@ -70,14 +97,32 @@
           />
 
           @if ($selectedPhoto)
-            <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+            <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 group">
               <img
                 src="{{ $selectedPhoto->url }}"
                 alt="{{ $selectedPhoto->alt ?? 'Service photo from ' . $location->name }}"
                 class="w-full h-48 sm:h-64 object-cover"
               />
-              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4">
-                <p class="text-white text-sm font-medium">Include this photo with your review</p>
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <flux:button
+                  size="sm"
+                  variant="filled"
+                  icon="arrow-down-tray"
+                  class="cursor-pointer"
+                  @click="downloadPhoto()"
+                >
+                  Save Photo
+                </flux:button>
+              </div>
+              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4 flex items-center justify-between">
+                <p class="text-white text-sm font-medium">Upload this photo with your review</p>
+                <flux:button
+                  size="xs"
+                  variant="ghost"
+                  icon="arrow-down-tray"
+                  class="cursor-pointer text-white hover:bg-white/20 sm:hidden"
+                  @click="downloadPhoto()"
+                />
               </div>
             </div>
           @endif
@@ -99,8 +144,14 @@
               </flux:select>
             </div>
 
-            <x-alert type="warning" icon="camera" title="Important: Take a Screenshot!">
-              After posting your review on Google, take a screenshot of it. You'll need to upload it to claim your gift card.
+            <x-alert type="info" icon="clipboard-document-list" title="How it works">
+              <ol class="list-decimal list-inside space-y-1 mt-1">
+                <li><strong>Save the photo</strong> above (hover and click "Save Photo")</li>
+                <li>Click "Continue" — we'll copy the review text for you</li>
+                <li>On Google: <strong>paste the review</strong> and <strong>upload the photo</strong></li>
+                <li><strong>Take a screenshot</strong> of your posted review</li>
+                <li>Return here to upload your screenshot and claim your gift card</li>
+              </ol>
             </x-alert>
 
             <div class="pt-2">
