@@ -64,25 +64,19 @@ class BusinessResource extends Resource
 
                 Forms\Components\Section::make('Display Settings')
                     ->schema([
+                        Forms\Components\FileUpload::make('avatar')
+                            ->label('Avatar')
+                            ->image()
+                            ->disk('public')
+                            ->directory('business-avatars')
+                            ->imageEditor()
+                            ->circleCropper()
+                            ->helperText('Business logo or avatar image'),
                         Forms\Components\TextInput::make('icon')
                             ->required()
                             ->maxLength(255)
                             ->default('building-storefront')
                             ->helperText('Heroicon name (e.g., "bolt", "lifebuoy")'),
-                        Forms\Components\Select::make('color')
-                            ->required()
-                            ->options([
-                                'zinc' => 'Zinc',
-                                'red' => 'Red',
-                                'orange' => 'Orange',
-                                'yellow' => 'Yellow',
-                                'green' => 'Green',
-                                'blue' => 'Blue',
-                                'indigo' => 'Indigo',
-                                'purple' => 'Purple',
-                                'pink' => 'Pink',
-                            ])
-                            ->default('zinc'),
                         Forms\Components\TextInput::make('sort_order')
                             ->required()
                             ->numeric()
@@ -98,29 +92,16 @@ class BusinessResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\ImageColumn::make('avatar')
+                    ->disk('public')
+                    ->circular()
+                    ->defaultImageUrl(fn (Business $record) => 'https://ui-avatars.com/api/?name='.urlencode($record->name).'&background=f4f4f5&color=71717a'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable()
                     ->sortable(),
                 Tables\Columns\TextColumn::make('description')
                     ->searchable()
                     ->limit(30),
-                Tables\Columns\TextColumn::make('color')
-                    ->formatStateUsing(function (string $state): string {
-                        $colorMap = [
-                            'zinc' => '#71717a',
-                            'red' => '#ef4444',
-                            'orange' => '#f97316',
-                            'yellow' => '#eab308',
-                            'green' => '#22c55e',
-                            'blue' => '#3b82f6',
-                            'indigo' => '#6366f1',
-                            'purple' => '#a855f7',
-                            'pink' => '#ec4899',
-                        ];
-                        $hex = $colorMap[$state] ?? '#71717a';
-                        return '<span style="background-color: '.$hex.'; width: 12px; height: 12px; border-radius: 9999px; display: inline-block;"></span>';
-                    })
-                    ->html(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->boolean()
                     ->label('Active'),

@@ -64,7 +64,8 @@ composer test
 ## How It Works
 
 1. **Select Location** - Customer chooses which business they visited
-2. **Post Review** - Customer copies the pre-written review, enters their details, and is redirected to Google Business Profile
-3. **Claim Reward** - Customer returns via unique link to upload a screenshot of their posted review
+2. **Pull from Database** - Pre-written review is pulled from the database and image
+3. **Post Review** - Customer copies the pre-written review, enters their details, and is redirected to Google Business Profile
+4. **Claim Reward** - Customer returns via unique link to upload a screenshot of their posted review
 
 Submissions trigger webhooks to n8n for processing gift card fulfillment.

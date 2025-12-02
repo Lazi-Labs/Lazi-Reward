@@ -34,7 +34,7 @@
                   :key="$loc->id"
                   :name="$loc->name"
                   :description="$loc->description"
-                  :color="$loc->color"
+                  :avatar="$loc->avatar"
                 />
               @endforeach
             </div>
@@ -66,7 +66,7 @@
         <div wire:loading.remove wire:target="submit" class="space-y-6">
           <x-location-badge
             :name="$location->name"
-            :color="$location->color ?? 'zinc'"
+            :avatar="$location->avatar"
           />
 
           {{-- Service Photo Upload --}}

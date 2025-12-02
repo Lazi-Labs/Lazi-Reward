@@ -17,7 +17,7 @@ class Business extends Model
         'gmb_link',
         'review_template',
         'icon',
-        'color',
+        'avatar',
         'is_active',
         'sort_order',
     ];
@@ -30,6 +30,16 @@ class Business extends Model
     public function submissions(): HasMany
     {
         return $this->hasMany(Submission::class);
+    }
+
+    public function reviews(): HasMany
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function photos(): HasMany
+    {
+        return $this->hasMany(Photo::class);
     }
 
     public function scopeActive($query)
