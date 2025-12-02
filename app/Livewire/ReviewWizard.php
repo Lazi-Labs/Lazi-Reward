@@ -4,6 +4,7 @@ namespace App\Livewire;
 
 use App\Models\Business;
 use App\Models\GiftCard;
+use App\Models\Photo;
 use App\Models\Submission;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -11,18 +12,16 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Component;
-use Livewire\WithFileUploads;
 
 class ReviewWizard extends Component
 {
-    use WithFileUploads;
-
     public $step = 1;
+
     public $locationId = '';
+
     public $location = null; // Will hold the Business model
 
-    #[Validate('required|image|mimes:jpeg,png,webp|max:10240', message: 'Please upload a photo (JPEG, PNG, or WebP, max 10MB).', onUpdate: false)]
-    public $servicePhoto;
+    public $selectedPhoto = null; // Will hold the randomly selected Photo
 
     #[Validate('required|string|min:2|max:100', message: 'Please enter your full name (2-100 characters).')]
     public $name = '';
@@ -40,6 +39,13 @@ class ReviewWizard extends Component
     {
         $this->locationId = $id;
         $this->location = Business::find($id);
+
+        // Randomly select an available (unused) photo from the business's photos
+        $this->selectedPhoto = Photo::where('business_id', $id)
+            ->available()
+            ->inRandomOrder()
+            ->first();
+
         $this->step = 2;
     }
 
@@ -48,30 +54,18 @@ class ReviewWizard extends Component
         $this->step = 1;
         $this->locationId = '';
         $this->location = null;
-    }
-
-    public function removeServicePhoto()
-    {
-        $this->servicePhoto = null;
-        $this->resetValidation('servicePhoto');
-    }
-
-    public function updatedServicePhoto()
-    {
-        $this->validateOnly('servicePhoto');
+        $this->selectedPhoto = null;
     }
 
     public function updated($property)
     {
-        if ($property !== 'servicePhoto') {
-            $this->validateOnly($property);
-        }
+        $this->validateOnly($property);
     }
 
     public function submit()
     {
         // Rate limit: 5 submissions per hour per IP
-        $key = 'submission:' . request()->ip();
+        $key = 'submission:'.request()->ip();
         if (RateLimiter::tooManyAttempts($key, 5)) {
             $seconds = RateLimiter::availableIn($key);
             throw ValidationException::withMessages([
@@ -82,10 +76,10 @@ class ReviewWizard extends Component
 
         $this->validate();
 
-        $token = 'review_' . Str::random(16);
+        $token = 'review_'.Str::random(16);
 
-        // Store the service photo
-        $servicePhotoPath = $this->servicePhoto->store('service-photos', 'public');
+        // Use the randomly selected photo from the business
+        $servicePhotoPath = $this->selectedPhoto?->path;
 
         // Get the gift card model
         $giftCardModel = GiftCard::find($this->giftCard);
@@ -103,6 +97,9 @@ class ReviewWizard extends Component
             'service_photo_path' => $servicePhotoPath,
         ]);
 
+        // Mark the photo as used so it won't be selected again
+        $this->selectedPhoto?->markAsUsed();
+
         // Send to n8n (if webhook URL is configured)
         $webhookUrl = config('business.webhooks.submission');
         if ($webhookUrl) {
@@ -118,7 +115,7 @@ class ReviewWizard extends Component
                     'gift_card_choice' => $giftCardModel?->key ?? '',
                     'token' => $token,
                     'upload_url' => route('upload', ['token' => $token]),
-                    'service_photo_url' => asset('storage/' . $servicePhotoPath),
+                    'service_photo_url' => $servicePhotoPath ? asset('storage/'.$servicePhotoPath) : null,
                 ]);
             } catch (\Exception $e) {
                 // Log error but continue
