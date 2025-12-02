@@ -18,8 +18,7 @@ class StatsOverview extends BaseWidget
 					->descriptionIcon( 'heroicon-m-document-text' )
 					->extraAttributes( [
 						'class' => 'bg-zinc-200 dark:bg-zinc-800 rounded-full text-sm',
-					] )
-					->color( 'primary' ),
+					] ),
 
 			Stat::make( 'Pending', Submission::where( 'status', 'pending' )->count() )
 					->description( 'Awaiting action' )
@@ -32,7 +31,7 @@ class StatsOverview extends BaseWidget
 					->color( 'warning' ),
 
 			Stat::make( 'Completed', Submission::where( 'status', 'completed' )->count() )
-					->description( 'Gift card ready' )
+					->description( 'Gift card sent' )
 					->descriptionIcon( 'heroicon-m-check-circle' )
 					->color( 'success' ),
 		];

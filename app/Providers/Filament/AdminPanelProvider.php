@@ -64,6 +64,11 @@ class AdminPanelProvider extends PanelProvider
 				PanelsRenderHook::HEAD_END,
 				fn() => Blade::render( '
 					<style>
+						/* Dark mode page background */
+						.dark {
+							--gray-950: 0 0 0 !important;
+						}
+
 						/* Table Header - inline search with heading */
 						.fi-ta-header-ctn {
 							display: flex;
@@ -119,7 +124,7 @@ class AdminPanelProvider extends PanelProvider
 						}
 						.fi-tab:hover { color: #52525b; }
 						.dark .fi-tab { color: #a1a1aa; }
-						.dark .fi-tab:hover { color: #d4d4d8; background-color: rgba(255, 255, 255, 0.05); }
+						.dark .fi-tab:hover { color: #d4d4d8; }
 						.fi-tab.active { color: #18181b; border-bottom-color: #71717a; }
 						.dark .fi-tab.active { color: #fafafa; border-bottom-color: #a1a1aa; }
 
@@ -147,6 +152,65 @@ class AdminPanelProvider extends PanelProvider
 						}
 						.fi-global-search-field:focus-within::after {
 							display: none;
+						}
+						.dark .fi-sidebar-item-button {
+							color: #a1a1aa !important;
+						}
+						.dark .fi-sidebar-item-active .fi-sidebar-item-button,
+						.dark .fi-sidebar-item-active .fi-sidebar-item-icon,
+						 .dark .fi-sidebar-item-active .fi-sidebar-item-label {
+							color: #fff;
+						}
+
+						/* Dark mode buttons - white bg with primary text */
+						.dark .fi-btn.fi-btn-color-primary {
+							background-color: #fff !important;
+							color: #18181b !important;
+						}
+						.dark .fi-btn.fi-btn-color-primary:hover {
+							background-color: #e4e4e7 !important;
+						}
+						.dark .fi-btn.fi-btn-color-primary svg {
+							color: #18181b !important;
+						}
+
+						/* Filters above content - cleaner toolbar style */
+						.fi-ta-filters {
+							background: #fafafa;
+							border: 1px solid #e4e4e7;
+							border-radius: 0.75rem;
+							padding: 0.75rem 1rem;
+						}
+						.dark .fi-ta-filters {
+							background: rgba(255, 255, 255, 0.03);
+							border-color: rgba(255, 255, 255, 0.1);
+						}
+						.fi-ta-filters .fi-fo-field-wrp {
+							margin: 0;
+						}
+						.fi-ta-filters .fi-fo-field-wrp-label {
+							display: none;
+						}
+						.fi-ta-filters .fi-select-trigger {
+							background: #fff;
+							border-radius: 0.5rem;
+							min-width: 200px;
+						}
+						.dark .fi-ta-filters .fi-select-trigger {
+							background: rgba(255, 255, 255, 0.05);
+						}
+
+						/* Dark mode input focus - off-white ring */
+						.dark .fi-input:focus,
+						.dark .fi-input:focus-within,
+						.dark .fi-select-trigger:focus,
+						.dark .fi-input-wrp:focus-within {
+							--tw-ring-color: rgba(255, 255, 255, 0.3) !important;
+							border-color: rgba(255, 255, 255, 0.4) !important;
+						}
+						.dark .fi-fo-textarea:focus {
+							--tw-ring-color: rgba(255, 255, 255, 0.3) !important;
+							border-color: rgba(255, 255, 255, 0.4) !important;
 						}
 					</style>
 				' ),
