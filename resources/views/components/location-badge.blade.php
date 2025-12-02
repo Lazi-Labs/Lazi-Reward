@@ -6,7 +6,7 @@
 
 <div class="flex items-center gap-3 p-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg w-fit">
   <img
-    src="{{ $avatar ? Storage::url($avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=f4f4f5&color=71717a' }}"
+    src="{{ $avatar && str_contains($avatar, '/') ? Storage::url($avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=e4e4e7&color=71717a' }}"
     alt="{{ $name }}"
     class="size-6 rounded-full object-cover"
   />
