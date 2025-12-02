@@ -1,18 +1,27 @@
+<!--suppress PhpDeprecationInspection -->
 <x-filament-panels::page>
+  @php
+    $tabs = [
+      'overview' => 'Overview',
+      'analytics' => 'Analytics',
+      'activity' => 'Activity',
+    ];
+  @endphp
+
   <div class="fi-tabs">
-    <button wire:click="setActiveTab('overview')" type="button" @class(['fi-tab', 'active' => $activeTab === 'overview'])>
-      Overview
-    </button>
-    <button wire:click="setActiveTab('analytics')" type="button" @class(['fi-tab', 'active' => $activeTab === 'analytics'])>
-      Analytics
-    </button>
-    <button wire:click="setActiveTab('activity')" type="button" @class(['fi-tab', 'active' => $activeTab === 'activity'])>
-      Activity
-    </button>
+    @foreach ($tabs as $key => $label)
+      <button
+        wire:click="setActiveTab('{{ $key }}')"
+        type="button"
+        @class(['fi-tab', 'active' => $activeTab === $key])
+      >
+        {{ $label }}
+      </button>
+    @endforeach
   </div>
 
   <x-filament-widgets::widgets
     :columns="$this->getColumns()"
-    :widgets="$this->getVisibleWidgets()"
+    :widgets="$this->getWidgets()"
   />
 </x-filament-panels::page>

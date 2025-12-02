@@ -1,12 +1,12 @@
 @import '../../../vendor/filament/filament/resources/css/theme.css';
-
-@source '../../../app/Filament/**/*.php';
-@source '../../../resources/views/filament/**/*.blade.php';
-
-/* Component styles */
 @import './_global.css';
 @import './_sidebar.css';
 @import './_tables.css';
 @import './_tabs.css';
 @import './_forms.css';
 @import './_buttons.css';
+
+@source '../../../app/Filament/**/*.php';
+@source '../../../resources/views/filament/**/*.blade.php';
+
+/* Component styles */

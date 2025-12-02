@@ -76,6 +76,12 @@ class Dashboard extends BaseDashboard
 		};
 	}
 
+	/**
+	 * Set the active tab and redirect to the appropriate URL
+	 *
+	 * @param string $tab The tab name ('overview', 'analytics', or 'activity')
+	 * @return void
+	 */
 	public function setActiveTab( string $tab ): void
 	{
 		$url = $tab === 'overview' ? '/admin' : "/admin/$tab";
