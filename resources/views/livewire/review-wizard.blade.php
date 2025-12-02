@@ -69,6 +69,19 @@
             :avatar="$location->avatar"
           />
 
+          @if ($selectedPhoto)
+            <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700">
+              <img
+                src="{{ $selectedPhoto->url }}"
+                alt="{{ $selectedPhoto->alt ?? 'Service photo from ' . $location->name }}"
+                class="w-full h-48 sm:h-64 object-cover"
+              />
+              <div class="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/60 to-transparent p-4">
+                <p class="text-white text-sm font-medium">Include this photo with your review</p>
+              </div>
+            </div>
+          @endif
+
           <x-review-box :review="$location->review_template"/>
 
           <form wire:submit="submit" class="space-y-5">

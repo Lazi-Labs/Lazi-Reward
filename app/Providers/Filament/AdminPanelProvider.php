@@ -6,6 +6,7 @@ use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Enums\UserMenuPosition;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -29,6 +30,7 @@ class AdminPanelProvider extends PanelProvider
 			->databaseNotifications()
 			->darkMode( true )
 			->sidebarCollapsibleOnDesktop()
+			->userMenu( position: UserMenuPosition::Sidebar )
 			->brandName( 'Lazi Rewards' )
 			->font( 'Inter' )
 			->viteTheme( 'resources/css/admin/theme.css' )

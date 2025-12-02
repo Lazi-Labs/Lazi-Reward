@@ -3,6 +3,10 @@
  * Navigation, toggle button, and sidebar items
  */
 
+.fi-sidebar {
+  @apply w-auto bg-white dark:bg-zinc-900 ;
+}
+
 /* Sidebar Toggle - custom icon */
 .fi-sidebar-header .fi-icon-btn .fi-icon-btn-icon {
   @apply hidden!;
