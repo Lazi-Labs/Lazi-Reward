@@ -48,7 +48,7 @@
       @if ($title)
         <h4 class="font-medium {{ $styles['title'] }} text-sm">{{ $title }}</h4>
       @endif
-      <p class="text-sm {{ $styles['text'] }} {{ $title ? 'mt-1' : '' }}">{{ $slot }}</p>
+      <div class="text-sm {{ $styles['text'] }} {{ $title ? 'mt-1' : '' }}">{{ $slot }}</div>
     </div>
   </div>
 </div>

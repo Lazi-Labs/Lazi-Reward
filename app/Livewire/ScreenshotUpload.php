@@ -78,6 +78,13 @@ class ScreenshotUpload extends Component
                     'id' => $this->submission->id,
                     'token' => $this->token,
                     'screenshot_url' => asset('storage/' . $path),
+                    'name' => $this->submission->name,
+                    'email' => $this->submission->email,
+                    'phone' => $this->submission->phone,
+                    'business_name' => $this->submission->business?->name,
+                    'business_key' => $this->submission->business_key,
+                    'gift_card_name' => $this->submission->giftCard?->name,
+                    'gift_card_key' => $this->submission->gift_card_choice,
                 ]);
             } catch (Exception $e) {
                 // Log error but continue
