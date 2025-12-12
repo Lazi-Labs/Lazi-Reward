@@ -12,11 +12,24 @@ class Review extends Model
 
     protected $fillable = [
         'business_id',
+        'photo_id',
         'content',
     ];
 
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);
+    }
+
+    public function photo(): BelongsTo
+    {
+        return $this->belongsTo(Photo::class);
+    }
+
+    public function scopeWithAvailablePhoto($query)
+    {
+        return $query->whereHas('photo', function ($q) {
+            $q->where('is_used', false);
+        });
     }
 }

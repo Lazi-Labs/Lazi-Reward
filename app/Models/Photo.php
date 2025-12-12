@@ -45,6 +45,16 @@ class Photo extends Model
 
     public function getUrlAttribute(): ?string
     {
-        return $this->path ? Storage::disk('public')->url($this->path) : null;
+        if (!$this->path) {
+            return null;
+        }
+        
+        // If path starts with 'samples/', use placeholder image
+        if (str_starts_with($this->path, 'samples/')) {
+            $seed = md5($this->path);
+            return "https://picsum.photos/seed/{$seed}/800/600";
+        }
+        
+        return Storage::disk('public')->url($this->path);
     }
 }

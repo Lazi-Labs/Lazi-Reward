@@ -1,12 +1,73 @@
-<x-wizard.layout :step="3" :completed="$uploaded">
+<x-wizard.layout :step="3" :completed="$uploaded && $verificationStatus === 'approved'">
   @if ($uploaded)
-    {{-- Success State --}}
-    <x-success-card
-      title="Thank You!"
-      description="We've received your screenshot. Your gift card will be on its way shortly!"
-    >
-      <flux:button href="/" variant="ghost">Return Home</flux:button>
-    </x-success-card>
+    @if ($verifying)
+      {{-- Verifying State - Spinning wheel with countdown --}}
+      <div class="max-w-md mx-auto" wire:poll.3s="checkVerificationStatus">
+        <x-card class="text-center py-12">
+          {{-- Spinning wheel --}}
+          <div class="mb-8">
+            <div class="relative inline-flex">
+              <div class="w-20 h-20 border-4 border-accent/20 rounded-full"></div>
+              <div class="absolute top-0 left-0 w-20 h-20 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+            </div>
+          </div>
+          
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">
+            Verifying Your Screenshot
+          </h2>
+          <p class="text-zinc-600 dark:text-zinc-400 mb-6">
+            Please wait while we verify your review screenshot...
+          </p>
+          
+          {{-- Countdown timer --}}
+          <div x-data="{ seconds: 60 }" x-init="setInterval(() => { if (seconds > 0) seconds-- }, 1000)">
+            <p class="text-sm text-zinc-500 dark:text-zinc-500">
+              Estimated time: <span x-text="seconds" class="font-mono font-semibold text-accent"></span> seconds
+            </p>
+          </div>
+        </x-card>
+      </div>
+    @elseif ($verificationStatus === 'approved')
+      {{-- Approved State --}}
+      <x-success-card
+        title="You Have Been Approved!"
+        description="Your gift card will be sent within 10 minutes."
+      >
+        <div class="flex items-center justify-center gap-2 text-green-600 dark:text-green-400 mb-4">
+          <flux:icon.check-circle class="size-6" />
+          <span class="font-medium">Verification Successful</span>
+        </div>
+        <flux:button href="/" variant="ghost">Return Home</flux:button>
+      </x-success-card>
+    @elseif ($verificationStatus === 'rejected')
+      {{-- Rejected State --}}
+      <div class="max-w-md mx-auto">
+        <x-card class="text-center py-12">
+          <div class="mb-6">
+            <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto">
+              <flux:icon.x-circle class="size-8 text-red-600 dark:text-red-400" />
+            </div>
+          </div>
+          
+          <h2 class="text-2xl font-bold text-zinc-900 dark:text-white mb-3">
+            Sorry, Please Try Again Later
+          </h2>
+          <p class="text-zinc-600 dark:text-zinc-400 mb-6">
+            {{ $verificationMessage ?? 'We could not verify your screenshot at this time.' }}
+          </p>
+          
+          <flux:button href="/" variant="ghost">Return Home</flux:button>
+        </x-card>
+      </div>
+    @else
+      {{-- Fallback Success State (no verification status yet but uploaded) --}}
+      <x-success-card
+        title="Thank You!"
+        description="We've received your screenshot. Your gift card will be on its way shortly!"
+      >
+        <flux:button href="/" variant="ghost">Return Home</flux:button>
+      </x-success-card>
+    @endif
   @else
     {{-- Upload Form --}}
     <div class="space-y-6">

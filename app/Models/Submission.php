@@ -25,6 +25,9 @@ class Submission extends Model
         'token',
         'screenshot_path',
         'service_photo_path',
+        'review_content',
+        'verification_status',
+        'verification_message',
     ];
 
     public function business(): BelongsTo

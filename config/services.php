@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'tremendous' => [
+        'api_key' => env('TREMENDOUS_API_KEY'),
+        'base_url' => env('TREMENDOUS_API_URL', 'https://testflight.tremendous.com/api/v2'),
+    ],
+
 ];

@@ -22,6 +22,9 @@ class ScreenshotUpload extends Component
     public $photo;
 
     public $uploaded = false;
+    public $verifying = false;
+    public $verificationStatus = null; // null, 'pending', 'approved', 'rejected'
+    public $verificationMessage = null;
 
     public function mount($token)
     {
@@ -35,6 +38,13 @@ class ScreenshotUpload extends Component
 
         if ($this->submission->status === 'completed') {
             $this->uploaded = true;
+            $this->verificationStatus = $this->submission->verification_status;
+            $this->verificationMessage = $this->submission->verification_message;
+            
+            // If uploaded but no verification status yet, show verifying state
+            if (!$this->verificationStatus) {
+                $this->verifying = true;
+            }
         }
     }
 
@@ -70,21 +80,32 @@ class ScreenshotUpload extends Component
             'status' => 'completed',
         ]);
 
-        // Send to n8n (if webhook URL is configured)
+        // Send to n8n webhook
         $webhookUrl = config('business.webhooks.upload');
         if ($webhookUrl) {
             try {
-                Http::post($webhookUrl, [
-                    'id' => $this->submission->id,
+                // Get screenshot file path
+                $screenshotPath = storage_path('app/public/' . $path);
+                $screenshotContents = file_get_contents($screenshotPath);
+
+                // Send as multipart/form-data with screenshot as real file upload
+                Http::attach(
+                    'screenshot',
+                    $screenshotContents,
+                    'screenshot.jpg',
+                    ['Content-Type' => 'image/jpeg']
+                )->post($webhookUrl, [
                     'token' => $this->token,
-                    'screenshot_url' => asset('storage/' . $path),
-                    'name' => $this->submission->name,
-                    'email' => $this->submission->email,
-                    'phone' => $this->submission->phone,
-                    'business_name' => $this->submission->business?->name,
-                    'business_key' => $this->submission->business_key,
-                    'gift_card_name' => $this->submission->giftCard?->name,
-                    'gift_card_key' => $this->submission->gift_card_choice,
+                    'name' => $this->submission->name ?? '',
+                    'email' => $this->submission->email ?? '',
+                    'phone' => $this->submission->phone ?? '',
+                    'business_name' => $this->submission->business?->name ?? '',
+                    'gift_card_name' => $this->submission->giftCard?->name ?? '',
+                    'gift_card_key' => $this->submission->gift_card_choice ?? '',
+                    'review_content' => $this->submission->review_content ?? '',
+                    'callback_url' => route('webhook.verification'),
+                    'submitted_at' => $this->submission->created_at->toIso8601String(),
+                    'completed_at' => now()->toIso8601String(),
                 ]);
             } catch (Exception $e) {
                 // Log error but continue
@@ -93,6 +114,21 @@ class ScreenshotUpload extends Component
         }
 
         $this->uploaded = true;
+        $this->verifying = true;
+    }
+
+    /**
+     * Poll for verification status (called from frontend)
+     */
+    public function checkVerificationStatus()
+    {
+        $this->submission->refresh();
+        
+        if ($this->submission->verification_status) {
+            $this->verifying = false;
+            $this->verificationStatus = $this->submission->verification_status;
+            $this->verificationMessage = $this->submission->verification_message;
+        }
     }
 
     public function render()

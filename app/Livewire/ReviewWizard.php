@@ -5,7 +5,8 @@ namespace App\Livewire;
 use Exception;
 use App\Models\Business;
 use App\Models\GiftCard;
-use App\Models\Photo;
+use App\Models\GiftCardProduct;
+use App\Models\Review;
 use App\Models\Submission;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter;
@@ -22,7 +23,7 @@ class ReviewWizard extends Component
 
     public $location = null; // Will hold the Business model
 
-    public $selectedPhoto = null; // Will hold the randomly selected Photo
+    public $selectedReviewPair = null; // Will hold the randomly selected Review with Photo
 
     #[Validate('required|string|min:2|max:100', message: 'Please enter your full name (2-100 characters).')]
     public $name = '';
@@ -34,16 +35,17 @@ class ReviewWizard extends Component
     public $phone = '';
 
     #[Validate('required', message: 'Please select a gift card reward.')]
-    public $giftCard = '';
+    public $giftCard = null;
 
     public function selectLocation($id)
     {
         $this->locationId = $id;
         $this->location = Business::find($id);
 
-        // Randomly select an available (unused) photo from the business's photos
-        $this->selectedPhoto = Photo::where('business_id', $id)
-            ->available()
+        // Randomly select a review with an available (unused) photo
+        $this->selectedReviewPair = Review::where('business_id', $id)
+            ->with('photo')
+            ->withAvailablePhoto()
             ->inRandomOrder()
             ->first();
 
@@ -55,7 +57,7 @@ class ReviewWizard extends Component
         $this->step = 1;
         $this->locationId = '';
         $this->location = null;
-        $this->selectedPhoto = null;
+        $this->selectedReviewPair = null;
     }
 
     public function updated($property)
@@ -79,11 +81,11 @@ class ReviewWizard extends Component
 
         $token = 'review_'.Str::random(16);
 
-        // Use the randomly selected photo from the business
-        $servicePhotoPath = $this->selectedPhoto?->path;
+        // Use the photo from the selected review pair
+        $servicePhotoPath = $this->selectedReviewPair?->photo?->path;
 
-        // Get the gift card model
-        $giftCardModel = GiftCard::find($this->giftCard);
+        // Get the gift card product model
+        $giftCardProduct = GiftCardProduct::find($this->giftCard);
 
         $submission = Submission::create([
             'name' => $this->name,
@@ -92,37 +94,17 @@ class ReviewWizard extends Component
             'business_id' => $this->locationId,
             'gift_card_id' => $this->giftCard,
             'business_key' => $this->location->key,
-            'gift_card_choice' => $giftCardModel?->key ?? '',
+            'gift_card_choice' => $giftCardProduct?->name ?? '',
             'token' => $token,
             'status' => 'waiting_for_screenshot',
             'service_photo_path' => $servicePhotoPath,
+            'review_content' => $this->selectedReviewPair?->content,
         ]);
 
         // Mark the photo as used so it won't be selected again
-        $this->selectedPhoto?->markAsUsed();
+        $this->selectedReviewPair?->photo?->markAsUsed();
 
-        // Send to n8n (if webhook URL is configured)
-        $webhookUrl = config('business.webhooks.submission');
-        if ($webhookUrl) {
-            try {
-                Http::post($webhookUrl, [
-                    'id' => $submission->id,
-                    'name' => $this->name,
-                    'email' => $this->email,
-                    'phone' => $this->phone,
-                    'business_name' => $this->location->name,
-                    'business_key' => $this->location->key,
-                    'gift_card_name' => $giftCardModel?->name ?? '',
-                    'gift_card_choice' => $giftCardModel?->key ?? '',
-                    'token' => $token,
-                    'upload_url' => route('upload', ['token' => $token]),
-                    'service_photo_url' => $servicePhotoPath ? asset('storage/'.$servicePhotoPath) : null,
-                ]);
-            } catch (Exception $e) {
-                // Log error but continue
-                report($e);
-            }
-        }
+        // Webhook is sent after screenshot upload, not here
 
         $uploadUrl = route('upload', ['token' => $token]);
 
@@ -134,7 +116,6 @@ class ReviewWizard extends Component
     {
         return view('livewire.review-wizard', [
             'locations' => Business::active()->ordered()->get(),
-            'giftCards' => GiftCard::active()->ordered()->get(),
         ]);
     }
 }

@@ -47,11 +47,11 @@ class SecurityHeaders
 
         $policies = [
             "default-src" => "'self'",
-            "script-src" => "'self' 'unsafe-inline' 'unsafe-eval'" . $viteDevServer,
+            "script-src" => "'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com" . $viteDevServer,
             "style-src" => "'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com" . $viteDevServer,
             "font-src" => "'self' https://fonts.bunny.net https://fonts.gstatic.com data:",
             "img-src" => "'self' data: blob: https:",
-            "connect-src" => "'self'" . $viteDevServer,
+            "connect-src" => "'self' https://rewards.perfectcatchai.com https://cloudflareinsights.com" . $viteDevServer,
             "frame-ancestors" => "'self'",
             "form-action" => "'self'",
             "base-uri" => "'self'",

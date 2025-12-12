@@ -1,14 +1,11 @@
 @props([
-    'key',
+    'locationId',
     'name',
     'description',
     'avatar' => null,
 ])
 
-<button
-  wire:click="selectLocation('{{ $key }}')"
-  class="group flex items-center gap-4 p-5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-accent transition-all hover:shadow-md text-left w-full cursor-pointer"
->
+<button wire:click="selectLocation('{{ $locationId }}')" class="group flex items-center gap-4 p-5 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:border-accent transition-all hover:shadow-md text-left w-full cursor-pointer">
   <img
     src="{{ $avatar && str_contains($avatar, '/') ? Storage::url($avatar) : 'https://ui-avatars.com/api/?name=' . urlencode($name) . '&background=f4f4f5&color=71717a' }}"
     alt="{{ $name }}"

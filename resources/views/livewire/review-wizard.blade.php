@@ -2,11 +2,15 @@
   x-data="{
     reviewText: '',
     photoUrl: '',
-    photoDownloaded: {{ $selectedPhoto ? 'false' : 'true' }},
+    photoDownloaded: {{ $selectedReviewPair && $selectedReviewPair->photo ? 'false' : 'true' }},
     reviewCopied: false,
+    showPhotoModal: false,
+    isIOS: false,
     init() {
       this.reviewText = this.$refs.reviewTextContent?.innerText || '';
-      this.photoUrl = '{{ $selectedPhoto?->url ?? '' }}';
+      this.photoUrl = '{{ $selectedReviewPair?->photo?->url ?? '' }}';
+      // Detect iOS
+      this.isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     },
     get canProceed() {
       return this.photoDownloaded && this.reviewCopied;
@@ -20,15 +24,27 @@
     },
     downloadPhoto() {
       if (!this.photoUrl) return;
+      
+      // On iOS, show modal with long-press instructions
+      if (this.isIOS) {
+        this.showPhotoModal = true;
+        return;
+      }
+      
+      // On other devices, try to download
       const link = document.createElement('a');
       link.href = this.photoUrl;
       link.download = 'review-photo.jpg';
-      link.target = '_blank';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       this.photoDownloaded = true;
       $flux.toast({ heading: 'Photo Saved!', text: 'Photo downloaded to your device', variant: 'success' });
+    },
+    confirmPhotoSaved() {
+      this.showPhotoModal = false;
+      this.photoDownloaded = true;
+      $flux.toast({ heading: 'Photo Saved!', text: 'Photo saved to your device', variant: 'success' });
     }
   }"
   x-on:open-gmb-link.window="window.open($event.detail.url, '_blank'); window.location.href = $event.detail.uploadUrl;"
@@ -65,7 +81,7 @@
             <div class="grid grid-cols-1 gap-4">
               @foreach ($locations as $loc)
                 <x-location-card
-                  :key="$loc->id"
+                  :location-id="$loc->id"
                   :name="$loc->name"
                   :description="$loc->description"
                   :avatar="$loc->avatar"
@@ -91,7 +107,7 @@
             :avatar="$location->avatar"
           />
 
-          @if ($selectedPhoto)
+          @if ($selectedReviewPair && $selectedReviewPair->photo)
             <div class="space-y-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
@@ -106,8 +122,8 @@
               </div>
               <div class="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700" :class="photoDownloaded ? 'ring-2 ring-green-500 ring-offset-2 dark:ring-offset-zinc-900' : ''">
                 <img
-                  src="{{ $selectedPhoto->url }}"
-                  alt="{{ $selectedPhoto->alt ?? 'Service photo from ' . $location->name }}"
+                  src="{{ $selectedReviewPair->photo->url }}"
+                  alt="{{ $selectedReviewPair->photo->alt ?? 'Service photo from ' . $location->name }}"
                   class="w-full h-48 sm:h-64 object-cover"
                 />
                 <div class="absolute inset-0 bg-black/50 flex items-center justify-center" x-show="!photoDownloaded">
@@ -128,7 +144,7 @@
             </div>
           @endif
 
-          <x-review-box :review="$location->review_template" :show-step="true"/>
+          <x-review-box :review="$selectedReviewPair?->content ?? $location->review_template" :show-step="true"/>
 
           <form wire:submit="submit" class="space-y-5">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,13 +152,11 @@
               <flux:input wire:model.blur="email" label="Email Address" type="email" placeholder="john@example.com" required :invalid="$errors->has('email')"/>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <flux:input wire:model.blur="phone" label="Phone Number" placeholder="(555) 123-4567" mask="(999) 999-9999" required :invalid="$errors->has('phone')"/>
-              <flux:select wire:model.live="giftCard" variant="listbox" label="Choose Your Reward" placeholder="Select a gift card..." class="cursor-pointer" :invalid="$errors->has('giftCard')">
-                @foreach ($giftCards as $card)
-                  <flux:select.option value="{{ $card->id }}">{{ $card->name }}</flux:select.option>
-                @endforeach
-              </flux:select>
+            <flux:input wire:model.blur="phone" label="Phone Number" placeholder="(555) 123-4567" mask="(999) 999-9999" required :invalid="$errors->has('phone')"/>
+
+            {{-- Gift Card Selector Carousel --}}
+            <div class="mt-2">
+              <livewire:gift-card-selector wire:model="giftCard" />
             </div>
 
             {{-- Progress checklist --}}
@@ -152,7 +166,7 @@
                 <div>
                   <p class="text-sm font-medium text-amber-800 dark:text-amber-300">Complete these steps before continuing:</p>
                   <ul class="mt-2 space-y-1">
-                    @if ($selectedPhoto)
+                    @if ($selectedReviewPair && $selectedReviewPair->photo)
                       <li class="flex items-center gap-2 text-sm" :class="photoDownloaded ? 'text-green-600 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'">
                         <flux:icon.check-circle x-show="photoDownloaded" class="size-4"/>
                         <flux:icon.x-circle x-show="!photoDownloaded" class="size-4"/>
@@ -195,4 +209,83 @@
       </div>
     @endif
   </x-wizard.layout>
+
+  {{-- iOS Photo Save Modal --}}
+  <div
+    x-show="showPhotoModal"
+    x-transition:enter="transition ease-out duration-300"
+    x-transition:enter-start="opacity-0"
+    x-transition:enter-end="opacity-100"
+    x-transition:leave="transition ease-in duration-200"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+    @click.self="showPhotoModal = false"
+  >
+    <div
+      x-show="showPhotoModal"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0 scale-95"
+      x-transition:enter-end="opacity-100 scale-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100 scale-100"
+      x-transition:leave-end="opacity-0 scale-95"
+      class="bg-white dark:bg-zinc-800 rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden"
+    >
+      {{-- Header --}}
+      <div class="p-4 border-b border-zinc-200 dark:border-zinc-700">
+        <div class="flex items-center justify-between">
+          <h3 class="text-lg font-semibold text-zinc-900 dark:text-white">Save Photo</h3>
+          <button @click="showPhotoModal = false" class="p-1 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700">
+            <flux:icon.x-mark class="size-5 text-zinc-500" />
+          </button>
+        </div>
+      </div>
+
+      {{-- Instructions --}}
+      <div class="p-4 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+        <div class="flex gap-3">
+          <flux:icon.information-circle class="size-6 text-blue-600 dark:text-blue-400 shrink-0" />
+          <div class="text-sm text-blue-800 dark:text-blue-300">
+            <p class="font-medium mb-1">To save on iPhone/iPad:</p>
+            <ol class="list-decimal list-inside space-y-1 text-blue-700 dark:text-blue-400">
+              <li><strong>Press and hold</strong> the photo below</li>
+              <li>Tap <strong>"Add to Photos"</strong> or <strong>"Save Image"</strong></li>
+              <li>Tap <strong>"I've Saved It"</strong> button</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {{-- Photo --}}
+      <div class="p-4">
+        <div class="rounded-xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-600">
+          <img
+            :src="photoUrl"
+            alt="Press and hold to save"
+            class="w-full h-auto"
+          />
+        </div>
+      </div>
+
+      {{-- Actions --}}
+      <div class="p-4 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-700 space-y-3">
+        <flux:button
+          variant="primary"
+          class="w-full"
+          icon="check-circle"
+          @click="confirmPhotoSaved()"
+        >
+          I've Saved the Photo
+        </flux:button>
+        <flux:button
+          variant="ghost"
+          class="w-full"
+          @click="showPhotoModal = false"
+        >
+          Cancel
+        </flux:button>
+      </div>
+    </div>
+  </div>
 </div>
