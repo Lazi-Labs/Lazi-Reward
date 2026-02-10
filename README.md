@@ -1,71 +1,36 @@
-# Lazi Rewards
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A gift card incentive system for collecting Google reviews. Customers select a business location, copy a pre-written review, post it on Google, and upload a screenshot to claim their reward.
+## Getting Started
 
-## Tech Stack
-
-- **Laravel 12** - PHP framework
-- **Livewire 3** - Reactive components
-- **Flux UI Pro** - Component library
-- **Tailwind CSS 4** - Styling
-- **MySQL** - Database
-
-## Requirements
-
-- PHP 8.2+
-- Composer
-- Node.js & npm
-- [Laravel Herd](https://herd.laravel.com/) (recommended for local dev)
-
-## Installation
+First, run the development server:
 
 ```bash
-# Clone the repository
-git clone https://github.com/portseif/lazi-rewards.git lazi-rewards
-cd lazi-rewards
-
-# Run setup (installs dependencies, creates .env, runs migrations, builds assets)
-composer setup
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Development
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-```bash
-# Start all services (server, queue, logs, vite)
-composer dev
-```
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-This runs concurrently:
-- Laravel dev server
-- Queue worker
-- Log viewer (Pail)
-- Vite dev server
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-Access the app at `https://lazi-rewards.test` (with Herd) or `http://localhost:8000`.
+## Learn More
 
-## Configuration
+To learn more about Next.js, take a look at the following resources:
 
-Copy `.env.example` to `.env` and configure:
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```env
-# n8n webhook URLs for processing submissions
-N8N_SUBMISSION_WEBHOOK=https://your-n8n-instance.com/webhook/submission
-N8N_UPLOAD_WEBHOOK=https://your-n8n-instance.com/webhook/upload
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-Business locations, reviews, and gift card options are configured in `config/business.php`.
+## Deploy on Vercel
 
-## Testing
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-```bash
-composer test
-```
-
-## How It Works
-
-1. **Select Location** - Customer chooses which business they visited
-2. **Pull from Database** - Pre-written review is pulled from the database and image
-3. **Post Review** - Customer copies the pre-written review, enters their details, and is redirected to Google Business Profile
-4. **Claim Reward** - Customer returns via unique link to upload a screenshot of their posted review
-
-Submissions trigger webhooks to n8n for processing gift card fulfillment.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

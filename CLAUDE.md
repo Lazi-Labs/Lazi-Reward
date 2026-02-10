@@ -117,3 +117,33 @@ GitHub Actions workflow in `.github/workflows/ci-cd.yml`:
 - `APPSYNC_REMOTE_HOST` - Server IP
 - `APPSYNC_REMOTE_BASEPATH` - Deployment path
 - `APPSYNC_REMOTE_DBNAME` - Production DB name
+
+## IMPORTANT: Agent Orchestration Rules
+
+When implementing features or executing PRPs, you MUST delegate work to the specialized agents in `.claude/agents/`:
+
+1. **ALWAYS use Task() to delegate** — do NOT implement everything yourself
+2. **Parallel when possible** — spawn backend-engineer and frontend-architect simultaneously for features that have both API and UI work
+3. **test-engineer runs AFTER each phase** — never skip testing
+4. **verification-agent runs at the END** — always confirm everything passes before reporting done
+5. **st-integration reviews ANY query** touching master.*, crm.*, or outbound.* tables
+
+### Delegation Pattern
+```
+# Phase N: Feature Name
+Task(backend-engineer): "Build the /api/rewards endpoint with Zod validation..."
+Task(frontend-architect): "Build the RewardsDashboard component with loading/error/empty states..."
+# After both complete:
+Task(test-engineer): "Write tests for /api/rewards and RewardsDashboard..."
+Task(verification-agent): "Run full verification pipeline..."
+```
+
+**NEVER implement more than 1 phase without running the verification-agent.**
+
+### Invoking Agents Manually
+After work completes on a phase, use the agent team:
+```
+Use the test-engineer agent to write tests for everything in Phase 1
+Use the verification-agent to check everything passes
+Continue to Phase 2 — use the backend-engineer for API routes and frontend-architect for components
+```
