@@ -37,7 +37,7 @@ export const PointsTransactionSchema = z.object({
   reason: z.string().nullable(),
   external_ref: z.string().nullable(),
   created_by: z.string(),
-  metadata: z.record(z.any()).nullable(),
+  metadata: z.record(z.string(), z.unknown()).nullable(),
   created_at: z.string().datetime(),
 });
 
@@ -65,7 +65,7 @@ export type Redemption = z.infer<typeof RedemptionSchema>;
 export const ApiResponseSchema = z.object({
   data: z.unknown(),
   error: z.string().nullable(),
-  meta: z.record(z.any()).optional(),
+  meta: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ApiResponse<T> = {
