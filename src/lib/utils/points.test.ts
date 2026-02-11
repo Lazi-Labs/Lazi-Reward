@@ -99,4 +99,18 @@ describe('Points Utilities', () => {
       expect(formatted).toBe('1,000,000');
     });
   });
+
+  describe('arePointsExpired', () => {
+    it('should return false for recent activity', () => {
+      const recentDate = new Date();
+      recentDate.setMonth(recentDate.getMonth() - 6);
+      expect(arePointsExpired(recentDate)).toBe(false);
+    });
+
+    it('should return true for activity over 24 months ago', () => {
+      const oldDate = new Date();
+      oldDate.setMonth(oldDate.getMonth() - 25);
+      expect(arePointsExpired(oldDate)).toBe(true);
+    });
+  });
 });
