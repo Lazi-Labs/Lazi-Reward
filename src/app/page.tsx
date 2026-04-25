@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -18,17 +19,28 @@ export default function HomePage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <Link href="/sign-up" className={buttonVariants({ size: "lg" })}>
-          Create your account
-        </Link>
-        <Link
-          href="/sign-in"
-          className={buttonVariants({ size: "lg", variant: "outline" })}
-        >
-          Sign in
-        </Link>
-      </div>
+      <SignedOut>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link href="/sign-up" className={buttonVariants({ size: "lg" })}>
+            Create your account
+          </Link>
+          <Link
+            href="/sign-in"
+            className={buttonVariants({ size: "lg", variant: "outline" })}
+          >
+            Sign in
+          </Link>
+        </div>
+      </SignedOut>
+
+      <SignedIn>
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard" className={buttonVariants({ size: "lg" })}>
+            Go to your dashboard
+          </Link>
+          <UserButton />
+        </div>
+      </SignedIn>
 
       <p className="pt-12 text-xs text-muted-foreground">
         Phase 0 scaffold · Next.js 16 · Clerk · Drizzle · Neon · shadcn/ui
