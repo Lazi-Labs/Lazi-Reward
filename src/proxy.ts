@@ -7,8 +7,13 @@ const isProtectedRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isProtectedRoute(req)) {
-    await auth.protect();
+  if (!isProtectedRoute(req)) return;
+
+  const { userId, redirectToSignIn } = await auth();
+  if (!userId) {
+    // Send unauthenticated visitors to /sign-in with a return path,
+    // not a 404 (Clerk v7 default for auth.protect()).
+    return redirectToSignIn({ returnBackUrl: req.url });
   }
 });
 
