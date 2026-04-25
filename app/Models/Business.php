@@ -48,16 +48,6 @@ class Business extends Model
         return $this->hasMany(Photo::class);
     }
 
-    public function jobTypes(): HasMany
-    {
-        return $this->hasMany(JobType::class);
-    }
-
-    public function jobReferrals(): HasMany
-    {
-        return $this->hasMany(JobReferral::class);
-    }
-
     public function scopeActive($query)
     {
         return $query->where('is_active', true);

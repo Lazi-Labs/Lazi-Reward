@@ -2,148 +2,106 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
+## Stack
+
+- **Laravel 12** (PHP 8.3+)
+- **Livewire 3** for reactive components
+- **Filament 4** for the admin panel
+- **Flux UI / Flux Pro** (Livewire's component library) — `<flux:component.subcomponent>` syntax (e.g. `<flux:select.option>`)
+- **Tailwind CSS 4** + **Vite**
+- **Tremendous** for gift card distribution
+- **n8n** webhooks for notifications
+
+## Application overview
+
+LAZI Rewards is a customer engagement platform for **LIV Pools** and **Perfect Catch Electric**. It does three things in one product:
+
+1. **Review collection** — anonymous review wizard that gives customers a gift card in exchange for a Google review (`ReviewWizard`, `ScreenshotUpload`).
+2. **Referral marketing** — campaign-based referral system with tracked links, conversions, and rewards (`ReferralCampaign`, `Referrer`, `Referral`, `ReferralClick`, `ReferralReward`).
+3. **CRM + reward fulfillment** — staff-facing Filament admin for businesses, gift cards, reviews, photos, submissions, and referral data; gift card payout via Tremendous.
+
+## Development commands
 
 ```bash
-# Full development environment (server, queue, logs, vite)
-composer dev
-
-# Initial setup
-composer setup
-
-# Run tests
-composer test
-
-# Lint code
-./vendor/bin/pint
-
-# Individual commands
-php artisan serve          # Start Laravel server
-npm run dev               # Vite dev server
-php artisan queue:listen  # Queue worker
-php artisan pail          # Log viewer
-
-# Single test file
-php artisan test tests/Feature/ExampleTest.php
-
-# Build for production
-npm run build
-
-# Create admin user for Filament
-php artisan make:filament-user
+composer install                 # install PHP deps
+npm install && npm run dev       # install JS deps + start Vite
+php artisan serve                # start the dev server
+php artisan queue:listen         # process queued jobs
+php artisan pail                 # tail logs
+composer test                    # phpunit suite
+./vendor/bin/pint                # code style
+php artisan make:filament-user   # create an admin user
 ```
+
+`docker-compose.yml` and `Dockerfile` are present for containerized dev — see them for the full stack (app, db, queue worker).
 
 ## Architecture
 
-This is a Laravel 12 + Livewire 3 + Flux UI + Filament application for collecting Google reviews in exchange for gift cards.
+### Domain models (`app/Models/`)
+- `Business` — a business location with GMB link and review template.
+- `User` — admin and customer accounts (Filament admins + Livewire-authenticated customers).
+- `Submission` — a review submission tied to a business and a gift card; carries verification status, Tremendous reward delivery info, and review reservation state.
+- `Review`, `CustomerReview`, `Photo` — review content and supporting media; reviews can be paired with photos via `Filament\Pages\PairReviewsPhotos`.
+- `GiftCard`, `GiftCardProduct` — gift card catalog and SKU-level Tremendous products.
+- `ReferralCampaign`, `Referrer`, `Referral`, `ReferralClick`, `ReferralReward` — the full referral marketing graph (a campaign can have many referrers, each with referrals, with attributable clicks and earned rewards).
 
-### Core Flow
-1. User visits homepage → `ReviewWizard` component (step 1: select business)
-2. User selects business → step 2: upload service photo, copy pre-written review, enter contact details, choose gift card
-3. Form submission → creates `Submission` record, sends webhook to n8n, opens Google Business Profile in new tab while redirecting to upload page
-4. User returns via token URL → `ScreenshotUpload` component to upload review screenshot
-5. Screenshot upload → updates submission, sends webhook to n8n
+### Public Livewire flows (`app/Livewire/`)
+- `ReviewWizard` — multi-step review submission flow at `/`.
+- `ScreenshotUpload` — token-validated screenshot upload at `/upload-review/{token}`.
+- `GiftCardSelector`, `GiftCardCarousel` — gift card picker components used inside the wizard.
 
-### Key Models
-- `Business` - Businesses with GMB links, review templates (UUID, managed via admin)
-- `GiftCard` - Gift card options (UUID, managed via admin)
-- `Submission` - Customer submissions with photos (UUID, relationships to business and gift card)
-- `User` - Admin users for Filament panel
+### Authenticated customer area
+- `Auth\LoginForm`, `Auth\RegisterForm` — at `/login`, `/register`.
+- `Account\Dashboard` — at `/dashboard` (auth middleware).
 
-### Key Files
-- `config/business.php` - Webhook URLs only (businesses/gift cards now in database)
-- `app/Livewire/ReviewWizard.php` - Multi-step form wizard
-- `app/Livewire/ScreenshotUpload.php` - Screenshot upload with token validation
-- `app/Filament/Resources/` - Admin panel resources
+### Admin (Filament 4) at `/admin`
+**Resources** (`app/Filament/Resources/`):
+`BusinessResource`, `GiftCardResource`, `GiftCardProductResource`, `PhotoResource`, `ReferralCampaignResource`, `ReferralResource`, `ReferralRewardResource`, `ReferrerResource`, `ReviewResource`, `SubmissionResource`, `UserResource`.
 
-### Admin Panel (Filament)
-Access at `/admin` with any registered user.
+**Widgets** (`app/Filament/Widgets/`):
+`StatsOverview`, `SubmissionsChart`, `LatestSubmissions`, `BusinessBreakdown`, `GiftCardPopularity`, `ActivityFeed`.
 
-**Resources:**
-- `SubmissionResource` - View/manage customer submissions with status, photos
-- `BusinessResource` - CRUD for businesses (Settings group)
-- `GiftCardResource` - CRUD for gift card options (Settings group)
-- `UserResource` - Manage admin users (Settings group)
+**Custom pages**: `Filament\Pages\PairReviewsPhotos`.
 
-### Blade Components
+### Services (`app/Services/`)
+- `ReferralService` — referral attribution, click tracking, reward calculation.
+- `TremendousService` — gift card issuance via the Tremendous API.
 
-Reusable components in `resources/views/components/`:
-
-| Component | Description |
-|-----------|-------------|
-| `wizard.layout` | Two-column layout with sidebar and content area |
-| `wizard.sidebar` | Progress sidebar showing all 3 steps |
-| `wizard.step` | Individual step item in the sidebar |
-| `page-header` | Step indicator badge + heading + description |
-| `card` | Generic card wrapper with border |
-| `location-card` | Business selection button |
-| `location-badge` | Selected business badge with dismiss button |
-| `review-box` | Copyable review text box |
-| `alert` | Alert/notice box (warning, info, success types) |
-| `success-card` | Success confirmation with icon |
-| `step-indicator` | "Step X of Y" badge |
-| `security-badge` | Security trust badge |
-
-### Tech Stack
-- Laravel 12 with MySQL (PHP 8.3+)
-- Livewire 3 for reactive components
-- Filament v3 for admin panel
-- Flux UI (Pro) for component library - use `<flux:component.subcomponent>` syntax (e.g., `<flux:select.option>`)
-- Tailwind CSS 4
-- Laravel Herd for local dev (uses `.test` domain)
+### Notifications (`app/Notifications/`)
+`NewSubmissionNotification`, `ScreenshotUploadedNotification`.
 
 ### Webhooks
-Submissions and uploads trigger webhooks to n8n (configured via `N8N_SUBMISSION_WEBHOOK` and `N8N_UPLOAD_WEBHOOK` env vars).
+Submissions and uploads trigger webhooks to n8n via `N8N_SUBMISSION_WEBHOOK` and `N8N_UPLOAD_WEBHOOK` (see `.env.example`).
+
+## Routes (`routes/web.php`)
+
+| Method | Path | Component | Auth |
+|---|---|---|---|
+| GET | `/` | `ReviewWizard` | public (throttled) |
+| GET | `/upload-review/{token}` | `ScreenshotUpload` | public (throttled) |
+| GET | `/login` | `Auth\LoginForm` | guest |
+| GET | `/register` | `Auth\RegisterForm` | guest |
+| POST | `/logout` | inline | any |
+| GET | `/dashboard` | `Account\Dashboard` | auth |
+| GET | `/concepts/*` | static views | public — design concepts, removable in prod |
+
+Filament admin lives at `/admin` (mounted by Filament's service provider).
+
+## Reusable Blade components (`resources/views/components/`)
+
+`wizard.layout`, `wizard.sidebar`, `wizard.step`, `wizard.mobile-nav`, `page-header`, `card`, `location-card`, `location-badge`, `review-box`, `alert`, `success-card`, `step-indicator`, `security-badge`, `footer-badge(s)`, `dark-mode-toggle`, `skeletons.*`, `layouts.app`, `layouts.landing`. Use these when building new Livewire views to keep visual consistency.
 
 ## CI/CD
 
-GitHub Actions workflow in `.github/workflows/ci-cd.yml`:
+GitHub Actions in `.github/workflows/ci-cd.yml` — see file for the up-to-date matrix. Historically: tests on PR; on push to `main`, build assets and rsync deploy. Required GitHub secrets/variables follow the `APPSYNC_*` naming.
 
-- **On PR to main**: Runs tests with MySQL
-- **On push to main**: Runs tests, builds assets, deploys via SSH/rsync
+## Conventions
 
-### Deployment
-- Uses rsync over SSH to deploy to production server
-- Post-deploy runs: `composer install`, `php artisan migrate`, cache commands
-- Server config stored in GitHub secrets/variables (APPSYNC_*)
+- Branches: `feature/*`, `fix/*`. Commit prefixes: `feat:`, `fix:`, `test:`, `refactor:`, `docs:`.
+- Run `./vendor/bin/pint` and `composer test` before opening a PR.
+- Never commit secrets — use `.env` (gitignored) and the `.env.example` template.
+- New referral or review flows should reuse `ReferralService` and `TremendousService` rather than calling their primitives directly.
 
-### Required Secrets
-- `SSH_PRIVATE_KEY` - SSH key for deployment
-- `APPSYNC_REMOTE_USER` - SSH username
-- `APPSYNC_REMOTE_DBPASSWORD` - Production DB password
-- `COMPOSER_AUTH` - Flux UI Pro credentials (JSON format)
+## Repo cleanup history
 
-### Required Variables
-- `APPSYNC_REMOTE_HOST` - Server IP
-- `APPSYNC_REMOTE_BASEPATH` - Deployment path
-- `APPSYNC_REMOTE_DBNAME` - Production DB name
-
-## IMPORTANT: Agent Orchestration Rules
-
-When implementing features or executing PRPs, you MUST delegate work to the specialized agents in `.claude/agents/`:
-
-1. **ALWAYS use Task() to delegate** — do NOT implement everything yourself
-2. **Parallel when possible** — spawn backend-engineer and frontend-architect simultaneously for features that have both API and UI work
-3. **test-engineer runs AFTER each phase** — never skip testing
-4. **verification-agent runs at the END** — always confirm everything passes before reporting done
-5. **st-integration reviews ANY query** touching master.*, crm.*, or outbound.* tables
-
-### Delegation Pattern
-```
-# Phase N: Feature Name
-Task(backend-engineer): "Build the /api/rewards endpoint with Zod validation..."
-Task(frontend-architect): "Build the RewardsDashboard component with loading/error/empty states..."
-# After both complete:
-Task(test-engineer): "Write tests for /api/rewards and RewardsDashboard..."
-Task(verification-agent): "Run full verification pipeline..."
-```
-
-**NEVER implement more than 1 phase without running the verification-agent.**
-
-### Invoking Agents Manually
-After work completes on a phase, use the agent team:
-```
-Use the test-engineer agent to write tests for everything in Phase 1
-Use the verification-agent to check everything passes
-Continue to Phase 2 — use the backend-engineer for API routes and frontend-architect for components
-```
+This repo went through a multi-fork experiment (Next.js scaffold + a parallel `JobReferral` Laravel fork). All of that was removed in `feature/referral-crm-revamp` (Phase 0) — the Laravel app you see now is the canonical one. Do not reintroduce a parallel JS-only frontend or a competing referral schema; extend `ReferralCampaign`/`Referrer`/`Referral` instead.

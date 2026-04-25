@@ -7,7 +7,6 @@ use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -53,31 +52,5 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return true; // All users can access admin panel
-    }
-
-    public function jobReferrals(): HasMany
-    {
-        return $this->hasMany(JobReferral::class);
-    }
-
-    public function getTotalEarningsAttribute(): float
-    {
-        return $this->jobReferrals()
-            ->where('reward_status', 'sent')
-            ->sum('reward_amount');
-    }
-
-    public function getPendingReferralsCountAttribute(): int
-    {
-        return $this->jobReferrals()
-            ->whereIn('status', ['pending', 'contacted', 'hired'])
-            ->count();
-    }
-
-    public function getCompletedReferralsCountAttribute(): int
-    {
-        return $this->jobReferrals()
-            ->where('status', 'completed')
-            ->count();
     }
 }
