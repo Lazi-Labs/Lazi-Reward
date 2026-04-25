@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
@@ -14,11 +14,22 @@ import {
 } from "@/db/schema";
 import { ensureCurrentUser } from "@/lib/users";
 
+function extractRole(meta: unknown): string | undefined {
+  if (!meta || typeof meta !== "object") return undefined;
+  const m = meta as Record<string, unknown>;
+  return typeof m.role === "string" ? m.role : undefined;
+}
+
 export async function requireAdmin() {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) redirect("/sign-in");
-  const role = (sessionClaims?.metadata as { role?: string } | undefined)?.role;
+
+  // currentUser() always returns the latest publicMetadata regardless of
+  // JWT template config — sessionClaims.metadata is unreliable.
+  const clerkUser = await currentUser();
+  const role = extractRole(clerkUser?.publicMetadata);
   if (role !== "admin" && role !== "staff") redirect("/dashboard");
+
   return ensureCurrentUser();
 }
 
