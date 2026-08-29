@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gift, LayoutDashboard, ListChecks, Star, Users, type LucideIcon } from "lucide-react";
+import { Eye, Gift, LayoutDashboard, ListChecks, Star, Users, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ export const ADMIN_NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/gifts", label: "Gifts", icon: Gift },
   { href: "/admin/referrals", label: "Referrals", icon: ListChecks },
   { href: "/admin/contacts", label: "Contacts", icon: Users },
+  { href: "/admin/preview", label: "Preview", icon: Eye },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -50,7 +51,7 @@ export function MobileTabBar() {
   const pathname = usePathname();
   return (
     <nav
-      className="sticky bottom-0 z-30 grid grid-cols-5 border-t bg-pce-navy pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="sticky bottom-0 z-30 grid grid-cols-6 border-t bg-pce-navy pb-[env(safe-area-inset-bottom)] md:hidden"
       aria-label="Admin"
     >
       {ADMIN_NAV.map((n) => {
@@ -62,7 +63,7 @@ export function MobileTabBar() {
             href={n.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors",
+              "flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors",
               active ? "text-pce-cream" : "text-white/70 hover:text-white",
             )}
           >
