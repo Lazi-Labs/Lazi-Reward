@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { BrandCard, NavyCard, kitButton } from "@/components/brand/brand-frame";
 import { FEEDBACK_QUESTIONS, REVIEW_GATE } from "@/lib/brand";
@@ -37,7 +37,7 @@ function Star({
     <button
       type="button"
       {...rest}
-      className="cursor-pointer border-0 bg-transparent px-1.5 py-1 leading-none transition-colors"
+      className="cursor-pointer border-0 bg-transparent px-1 py-1 leading-none transition-colors sm:px-1.5"
       style={{ fontSize: size, color: on ? ACTIVE : "#D9E6F0" }}
     >
       ★
@@ -89,9 +89,16 @@ function GiftBanner({
   const [choosing, setChoosing] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Tiles arm shortly after they appear so a tap that just rated us can't
+  // also land on a card that rendered under the same finger.
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setArmed(true), 700);
+    return () => clearTimeout(t);
+  }, []);
 
   function choose(p: { id: string; name: string }) {
-    if (!token || pending) return;
+    if (!token || pending || !armed) return;
     setChoosing(p.id);
     setErr(null);
     start(async () => {
@@ -131,7 +138,7 @@ function GiftBanner({
               <button
                 key={p.id}
                 type="button"
-                disabled={pending}
+                disabled={pending || !armed}
                 onClick={() => choose(p)}
                 className={cn(
                   "flex flex-col items-center gap-1.5 rounded-xl border border-pce-line border-b-[3px] bg-white px-2 py-3 text-[13px] font-bold text-pce-ink transition-colors hover:border-pce-coral hover:bg-pce-sky/40 disabled:opacity-60",
@@ -221,16 +228,16 @@ export function ReviewFunnel({
     return (
       <>
         {gift ? <GiftTeaser amount={gift.amount} /> : null}
-        <BrandCard className="mx-auto max-w-[560px] text-center">
+        <BrandCard className="mx-auto max-w-[560px] px-5 text-center sm:px-9">
           <h1 className="mb-2.5 font-display text-[40px] text-pce-navy">How Did We Do?</h1>
           <p className="mb-7 text-lg leading-[1.55] text-pce-body">
             {greeting} Tap a star to rate your recent {businessName} service visit.
           </p>
-          <div onMouseLeave={() => setHover(0)}>
+          <div className="flex flex-nowrap justify-center" onMouseLeave={() => setHover(0)}>
             {[1, 2, 3, 4, 5].map((n) => (
               <Star
                 key={n}
-                size={52}
+                size={44}
                 on={(hover || picked) >= n}
                 aria-label={`${n} star${n === 1 ? "" : "s"}`}
                 onMouseEnter={() => setHover(n)}
