@@ -19,13 +19,15 @@ export function buildReviewRequestMessage(args: {
   giftAmount: number | null;
 }) {
   const hi = args.firstName ? `Hi ${args.firstName},` : "Hi,";
+  // Review-first order (2026-08-29): the rating ask leads; the gift is an
+  // unconditional thank-you mentioned after it — never tied to what they say.
   if (args.giftAmount) {
     return [
-      `${hi} thanks for choosing ${args.brand.name}! Here's a ${money.format(args.giftAmount)} thank-you from our crew — pick your gift card here: ${args.reviewLink}`,
-      `While you're there, we'd love to hear how we did.`,
+      `${hi} it's Yanni from ${args.brand.name} 👋 How did we do? Tap to rate your visit — one tap, honest answer: ${args.reviewLink}`,
+      `A ${money.format(args.giftAmount)} thank-you from the crew is waiting right after, whatever you tell us.`,
     ].join("\n");
   }
-  return `${hi} thanks for choosing ${args.brand.name}! If you have 60 seconds, we'd love to hear how we did: ${args.reviewLink}`;
+  return `${hi} it's Yanni from ${args.brand.name} 👋 How did we do? Tap to rate your visit — one tap, honest answer: ${args.reviewLink}`;
 }
 
 export function buildReviewRequestEmail(args: Parameters<typeof buildReviewRequestMessage>[0]) {
