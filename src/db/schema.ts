@@ -165,6 +165,8 @@ export const contacts = pgTable(
     phone: text("phone"),
     source: text("source").$type<ContactSource>().notNull().default("manual"),
     tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    /** Ids in other systems: { st_customer_id, st_location_id, ghl_contact_id, … } */
+    externalRefs: jsonb("external_refs").$type<Record<string, string>>(),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -606,6 +608,8 @@ export const reviewRequests = pgTable(
     }),
     channel: text("channel").$type<CommChannel>().notNull(),
     template: text("template"),
+    /** Upstream identifiers (ServiceTitan job, GHL contact, technician…). */
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     status: text("status")
       .$type<ReviewRequestStatus>()
       .notNull()

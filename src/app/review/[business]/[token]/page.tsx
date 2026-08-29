@@ -5,6 +5,7 @@ import { BrandFrame } from "@/components/brand/brand-frame";
 import { brandFor } from "@/lib/brand";
 import { getGiftForReviewRequest, productsForGift } from "@/lib/gifts";
 import {
+  emitRequestEvent,
   getReviewRequestByToken,
   googleReviewUrlFor,
   markReviewRequestClicked,
@@ -43,6 +44,9 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
     markReviewRequestClicked(req.id).catch((err) =>
       console.error("Failed to mark review request clicked", err),
     ),
+    req.status !== "clicked" && req.status !== "submitted"
+      ? emitRequestEvent(req.id, "review_request.opened", {})
+      : Promise.resolve(),
   ]);
 
   const brand = brandFor(req.business.slug);

@@ -12,6 +12,7 @@ import {
   type ReviewRequestStatus,
 } from "@/db/schema";
 import { brandFor, reviewBaseUrl } from "@/lib/brand";
+import { emitEvent, type RewardsEvent } from "@/lib/events";
 import { getRequestOrigin } from "@/lib/referrals";
 
 const TOKEN_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789";
@@ -62,6 +63,34 @@ export async function getReviewRequestByToken(token: string) {
   });
 }
 
+/** Emit an outbound event carrying the request's upstream identifiers. */
+export async function emitRequestEvent(
+  requestId: string | null,
+  type: RewardsEvent["type"],
+  data: Record<string, unknown>,
+) {
+  if (!requestId || !process.env.OUTBOUND_EVENTS_URL) return;
+  try {
+    const req = await db.query.reviewRequests.findFirst({
+      where: eq(reviewRequests.id, requestId),
+      with: { business: true, contact: true },
+    });
+    if (!req) return;
+    emitEvent({
+      type,
+      business: req.business.slug,
+      requestId: req.id,
+      token: req.token,
+      contactId: req.contactId,
+      externalRefs: req.contact.externalRefs ?? null,
+      metadata: req.metadata ?? null,
+      data,
+    });
+  } catch (err) {
+    console.error("emitRequestEvent failed", type, err);
+  }
+}
+
 export async function markReviewRequestClicked(id: string) {
   await db
     .update(reviewRequests)
@@ -83,6 +112,10 @@ export async function createReviewRequest(args: {
   email?: string;
   phone?: string;
   channel: CommChannel;
+  /** Ids in other systems, merged onto the contact. */
+  externalRefs?: Record<string, string>;
+  /** Per-request upstream context (ST job, invoice, tech…). */
+  metadata?: Record<string, unknown>;
 }) {
   let contact = args.email
     ? await db.query.contacts.findFirst({
@@ -109,9 +142,18 @@ export async function createReviewRequest(args: {
         email: args.email ?? null,
         phone: args.phone ?? null,
         source: "review",
+        externalRefs: args.externalRefs ?? null,
       })
       .returning();
     contact = created;
+  } else if (args.externalRefs && Object.keys(args.externalRefs).length) {
+    await db
+      .update(contacts)
+      .set({
+        externalRefs: { ...(contact.externalRefs ?? {}), ...args.externalRefs },
+        updatedAt: new Date(),
+      })
+      .where(eq(contacts.id, contact.id));
   }
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -124,6 +166,7 @@ export async function createReviewRequest(args: {
           channel: args.channel,
           status: "queued",
           token: generateToken(),
+          metadata: args.metadata ?? null,
         })
         .returning();
       return created;
@@ -183,6 +226,11 @@ export async function recordRating(args: {
           eq(reviewRequests.status, "queued"),
         ),
       );
+    await emitRequestEvent(args.requestId, "rating.submitted", {
+      reviewId: review.id,
+      rating: args.rating,
+      sentToGoogle: args.sentToGoogle,
+    });
   }
   return review;
 }
@@ -230,6 +278,13 @@ export async function recordFeedback(args: {
       dueAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
   }
+
+  await emitRequestEvent(args.requestId, "feedback.submitted", {
+    reviewId: args.reviewId,
+    rating: args.rating,
+    scores: args.scores,
+    wantsCall: args.wantsCall,
+  });
 }
 
 // ── Admin listings ───────────────────────────────────────────────────────────

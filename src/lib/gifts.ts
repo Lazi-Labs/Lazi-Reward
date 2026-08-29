@@ -17,6 +17,7 @@ import {
   type GiftProduct,
   type TremendousWebhookEvent,
 } from "@/lib/tremendous";
+import { emitRequestEvent } from "@/lib/reviews";
 
 export type GiftCardRow = typeof giftCards.$inferSelect;
 
@@ -143,6 +144,14 @@ export async function claimGift(giftId: string, productId: string): Promise<Gift
       })
       .where(eq(giftCards.id, row.id))
       .returning();
+    await emitRequestEvent(row.reviewRequestId, "gift.claimed", {
+      giftId: row.id,
+      product: product.name,
+      productId,
+      amount: Number(row.amount),
+      redemptionLink: created.link,
+      tremendousOrderId: created.orderId,
+    });
     return updated;
   } catch (err) {
     console.error("Tremendous order failed", row.externalId, err);
