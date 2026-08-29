@@ -40,22 +40,6 @@ export const BRANDS: Record<string, BusinessBrand> = {
       { strong: "5-star", rest: "rated on Google" },
     ],
   },
-  "liv-pools": {
-    slug: "liv-pools",
-    name: "LIV Pools",
-    longName: "LIV Pools",
-    phone: "727-316-5206",
-    phoneHref: "tel:7273165206",
-    logo: "/brand/pce-logo-full.webp",
-    logoAlt: "LIV Pools",
-    googleReviewUrl: null,
-    website: "https://livpools.com",
-    trust: [
-      { strong: "Licensed", rest: "pool builder · CPC1459998" },
-      { strong: "Local", rest: "Tampa Bay" },
-      { strong: "Custom", rest: "pools, spas & outdoor living" },
-    ],
-  },
 };
 
 export const DEFAULT_BRAND_SLUG = "perfect-catch-electric";

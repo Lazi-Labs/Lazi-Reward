@@ -23,7 +23,7 @@ const sofia = Sofia_Sans({
 export const metadata: Metadata = {
   title: "Perfect Catch Rewards",
   description:
-    "Customer rewards, referrals, and reviews for Perfect Catch Electric and LIV Pools.",
+    "Customer rewards, referrals, and reviews for Perfect Catch Electric.",
 };
 
 export default function RootLayout({

@@ -4,17 +4,6 @@ import { businesses, referralCampaigns } from "../src/db/schema";
 
 const seedBusinesses = [
   {
-    name: "LIV Pools",
-    slug: "liv-pools",
-    gmbUrl: null,
-    reviewTemplate:
-      "We had a great experience with LIV Pools — friendly, on-time, and great quality work.",
-    avatar: null,
-    giftAmount: "10.00",
-    isActive: true,
-    sortOrder: 1,
-  },
-  {
     name: "Perfect Catch Electric",
     slug: "perfect-catch-electric",
     gmbUrl: "https://g.page/r/CUDCVygcLSPwEBM/review",
