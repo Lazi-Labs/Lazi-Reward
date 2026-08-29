@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, or, sql } from "drizzle-orm";
+import { and, count, eq, gte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -13,6 +13,8 @@ import {
   TremendousError,
   createLinkReward,
   isTremendousConfigured,
+  listCampaignProducts,
+  type GiftProduct,
   type TremendousWebhookEvent,
 } from "@/lib/tremendous";
 
@@ -26,31 +28,113 @@ function errorReason(err: unknown): string {
 }
 
 /**
- * Call Tremendous for an existing ledger row and persist the outcome.
- * Safe to call again for a failed row (same external_id → same order).
+ * Flow: a gift is *offered* when the review request is created (ledger row,
+ * no Tremendous call). The customer picks a product in the funnel; that
+ * choice creates the Tremendous order (`products: [id]`, LINK delivery) and
+ * the row becomes *created* with a redemption link. Idempotent per row via
+ * external_id, so a retry of a failed order can never double-pay.
  */
-async function fulfil(row: GiftCardRow, recipient: { name: string; email: string | null }) {
-  if (!isTremendousConfigured()) {
+
+/** Offer the unconditional thank-you gift for a review request (no API call). */
+export async function issueGiftForReviewRequest(requestId: string): Promise<GiftCardRow | null> {
+  const req = await db.query.reviewRequests.findFirst({
+    where: eq(reviewRequests.id, requestId),
+    with: { business: true, giftCard: true },
+  });
+  if (!req) return null;
+  if (req.giftCard) return req.giftCard;
+
+  const amount = Number(req.business.giftAmount);
+  if (!(amount > 0)) return null; // gifts disabled for this business
+
+  const [inserted] = await db
+    .insert(giftCards)
+    .values({
+      businessId: req.businessId,
+      contactId: req.contactId,
+      reviewRequestId: req.id,
+      source: "review_request",
+      amount: req.business.giftAmount,
+      currencyCode: "USD",
+      status: "offered",
+      externalId: `rr-${req.id}`,
+      campaignId: req.business.tremendousCampaignId,
+    })
+    .onConflictDoNothing({ target: giftCards.reviewRequestId })
+    .returning();
+  return (
+    inserted ??
+    (await db.query.giftCards.findFirst({ where: eq(giftCards.reviewRequestId, req.id) })) ??
+    null
+  );
+}
+
+/** Products this gift can be redeemed as (from the business's campaign). */
+export async function productsForGift(row: Pick<GiftCardRow, "campaignId" | "amount">): Promise<GiftProduct[]> {
+  if (!row.campaignId || !isTremendousConfigured()) return [];
+  try {
+    return await listCampaignProducts(row.campaignId, Number(row.amount));
+  } catch (err) {
+    console.error("listCampaignProducts failed", err);
+    return [];
+  }
+}
+
+/**
+ * Customer picked a product → create the Tremendous order. Returns the row
+ * with a redemption link on success; a `failed` row (with reason) otherwise.
+ */
+export async function claimGift(giftId: string, productId: string): Promise<GiftCardRow | null> {
+  const row = await db.query.giftCards.findFirst({
+    where: eq(giftCards.id, giftId),
+    with: { contact: true },
+  });
+  if (!row) return null;
+  // Already ordered — return as-is (never create a second order).
+  if (row.status === "created" || row.status === "delivered") return row;
+  if (row.status === "canceled") return row;
+
+  const products = await productsForGift(row);
+  const product = products.find((p) => p.id === productId);
+  if (!product) {
     const [updated] = await db
       .update(giftCards)
-      .set({ status: "failed", failureReason: "not_configured", updatedAt: new Date() })
+      .set({ status: "failed", failureReason: "invalid_product", updatedAt: new Date() })
       .where(eq(giftCards.id, row.id))
       .returning();
     return updated;
   }
+
+  if (!isTremendousConfigured()) {
+    const [updated] = await db
+      .update(giftCards)
+      .set({
+        status: "failed",
+        productId,
+        productName: product.name,
+        failureReason: "not_configured",
+        updatedAt: new Date(),
+      })
+      .where(eq(giftCards.id, row.id))
+      .returning();
+    return updated;
+  }
+
   try {
     const created = await createLinkReward({
       externalId: row.externalId,
       amount: Number(row.amount),
       currency: row.currencyCode,
-      recipientName: recipient.name,
-      recipientEmail: recipient.email,
-      campaignId: row.campaignId,
+      recipientName: row.contact.name,
+      recipientEmail: row.contact.email,
+      productIds: [productId],
     });
     const [updated] = await db
       .update(giftCards)
       .set({
         status: "created",
+        productId,
+        productName: product.name,
         tremendousOrderId: created.orderId,
         tremendousRewardId: created.rewardId,
         redemptionLink: created.link,
@@ -64,60 +148,38 @@ async function fulfil(row: GiftCardRow, recipient: { name: string; email: string
     console.error("Tremendous order failed", row.externalId, err);
     const [updated] = await db
       .update(giftCards)
-      .set({ status: "failed", failureReason: errorReason(err).slice(0, 500), updatedAt: new Date() })
+      .set({
+        status: "failed",
+        productId,
+        productName: product.name,
+        failureReason: errorReason(err).slice(0, 500),
+        updatedAt: new Date(),
+      })
       .where(eq(giftCards.id, row.id))
       .returning();
     return updated;
   }
 }
 
-/**
- * The unconditional thank-you gift that accompanies a review request.
- * Idempotent per request: one ledger row, one Tremendous external_id.
- */
-export async function issueGiftForReviewRequest(requestId: string): Promise<GiftCardRow | null> {
-  const req = await db.query.reviewRequests.findFirst({
-    where: eq(reviewRequests.id, requestId),
-    with: { business: true, contact: true, giftCard: true },
-  });
-  if (!req) return null;
-  if (req.giftCard && req.giftCard.status !== "failed") return req.giftCard;
-
-  const amount = Number(req.business.giftAmount);
-  if (!(amount > 0)) return null; // gifts disabled for this business
-
-  let row = req.giftCard;
-  if (!row) {
-    const [inserted] = await db
-      .insert(giftCards)
-      .values({
-        businessId: req.businessId,
-        contactId: req.contactId,
-        reviewRequestId: req.id,
-        source: "review_request",
-        amount: req.business.giftAmount,
-        currencyCode: "USD",
-        status: "created",
-        externalId: `rr-${req.id}`,
-        campaignId: req.business.tremendousCampaignId,
-      })
-      .onConflictDoNothing({ target: giftCards.reviewRequestId })
+/** Staff retry of a failed order (re-uses the product the customer picked). */
+export async function retryGift(giftId: string) {
+  const row = await db.query.giftCards.findFirst({ where: eq(giftCards.id, giftId) });
+  if (!row) return null;
+  if (row.status !== "failed") return row;
+  if (!row.productId) {
+    // Nothing was picked yet — put it back on offer so the customer can choose.
+    const [updated] = await db
+      .update(giftCards)
+      .set({ status: "offered", failureReason: null, updatedAt: new Date() })
+      .where(eq(giftCards.id, row.id))
       .returning();
-    row =
-      inserted ??
-      (await db.query.giftCards.findFirst({ where: eq(giftCards.reviewRequestId, req.id) })) ??
-      null;
-    if (!row) return null;
+    return updated;
   }
-  return fulfil(row, { name: req.contact.name, email: req.contact.email });
+  return claimGift(row.id, row.productId);
 }
 
-/** One-off gift from the contact page (or a future referral payout). */
-export async function issueManualGift(args: {
-  contactId: string;
-  amount?: number;
-  source?: "manual" | "referral";
-}) {
+/** One-off gift from the contact page — offered, customer picks via their review link. */
+export async function issueManualGift(args: { contactId: string; amount?: number }) {
   const contact = await db.query.contacts.findFirst({
     where: eq(contacts.id, args.contactId),
     with: { business: true },
@@ -129,25 +191,15 @@ export async function issueManualGift(args: {
     .values({
       businessId: contact.businessId,
       contactId: contact.id,
-      source: args.source ?? "manual",
+      source: "manual",
       amount: amount.toFixed(2),
       currencyCode: "USD",
-      status: "created",
-      externalId: `${args.source ?? "manual"}-${crypto.randomUUID()}`,
+      status: "offered",
+      externalId: `manual-${crypto.randomUUID()}`,
       campaignId: contact.business.tremendousCampaignId,
     })
     .returning();
-  return fulfil(row, { name: contact.name, email: contact.email });
-}
-
-export async function retryGift(giftId: string) {
-  const row = await db.query.giftCards.findFirst({
-    where: eq(giftCards.id, giftId),
-    with: { contact: true },
-  });
-  if (!row) return null;
-  if (row.status !== "failed") return row;
-  return fulfil(row, { name: row.contact.name, email: row.contact.email });
+  return row;
 }
 
 export async function markGiftSent(giftId: string, channel: GiftDeliveryChannel) {
@@ -163,56 +215,12 @@ export async function getGiftForReviewRequest(requestId: string) {
 
 // ── Admin queries ────────────────────────────────────────────────────────────
 
-export type GiftListRow = {
-  id: string;
-  status: GiftCardStatus;
-  amount: string;
-  source: string;
-  redemptionLink: string | null;
-  failureReason: string | null;
-  deliveryChannel: string | null;
-  sentAt: Date | null;
-  deliveredAt: Date | null;
-  createdAt: Date;
-  contactName: string;
-  businessName: string;
-  reviewRequestId: string | null;
-};
-
-export async function listGiftCards(limit = 100): Promise<GiftListRow[]> {
-  const rows = await db
-    .select({
-      id: giftCards.id,
-      status: giftCards.status,
-      amount: giftCards.amount,
-      source: giftCards.source,
-      redemptionLink: giftCards.redemptionLink,
-      failureReason: giftCards.failureReason,
-      deliveryChannel: giftCards.deliveryChannel,
-      sentAt: giftCards.sentAt,
-      deliveredAt: giftCards.deliveredAt,
-      createdAt: giftCards.createdAt,
-      contactName: contacts.name,
-      businessName: businesses.name,
-      reviewRequestId: giftCards.reviewRequestId,
-    })
-    .from(giftCards)
-    .innerJoin(contacts, eq(giftCards.contactId, contacts.id))
-    .innerJoin(businesses, eq(giftCards.businessId, businesses.id))
-    .orderBy(desc(giftCards.createdAt))
-    .limit(limit);
-  return rows.map((r) => ({ ...r, status: r.status as GiftCardStatus }));
-}
-
 export async function giftStats() {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const [row] = await db
-    .select({
-      n: count(),
-      total: sql<string>`COALESCE(SUM(${giftCards.amount}), 0)`,
-    })
+  const [ordered] = await db
+    .select({ n: count(), total: sql<string>`COALESCE(SUM(${giftCards.amount}), 0)` })
     .from(giftCards)
     .where(
       and(
@@ -220,19 +228,25 @@ export async function giftStats() {
         or(eq(giftCards.status, "created"), eq(giftCards.status, "delivered")),
       ),
     );
+  const [offered] = await db
+    .select({ n: count() })
+    .from(giftCards)
+    .where(eq(giftCards.status, "offered"));
   const [failed] = await db
     .select({ n: count() })
     .from(giftCards)
     .where(eq(giftCards.status, "failed"));
   return {
-    monthCount: Number(row?.n ?? 0),
-    monthTotal: Number(row?.total ?? 0),
+    monthCount: Number(ordered?.n ?? 0),
+    monthTotal: Number(ordered?.total ?? 0),
+    offeredCount: Number(offered?.n ?? 0),
     failedCount: Number(failed?.n ?? 0),
   };
 }
 
 export const GIFT_STATUS_LABEL: Record<GiftCardStatus, string> = {
-  created: "Ready",
+  offered: "Offered",
+  created: "Ordered",
   delivered: "Delivered",
   failed: "Failed",
   canceled: "Canceled",
@@ -282,3 +296,5 @@ export async function applyWebhookEvent(evt: TremendousWebhookEvent): Promise<st
   await db.update(giftCards).set(patch).where(eq(giftCards.id, row.id));
   return `applied:${evt.event}`;
 }
+
+void businesses;

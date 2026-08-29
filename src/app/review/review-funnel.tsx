@@ -6,7 +6,7 @@ import { BrandCard, NavyCard, kitButton } from "@/components/brand/brand-frame";
 import { FEEDBACK_QUESTIONS, REVIEW_GATE } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
-import { feedbackAction, rateAction } from "./actions";
+import { claimGiftAction, feedbackAction, rateAction } from "./actions";
 
 type Step = "rate" | "share" | "feedback" | "thanks-call" | "thanks-fb";
 
@@ -16,8 +16,14 @@ type Props = {
   token: string | null;
   googleUrl: string | null;
   contactFirstName: string | null;
-  /** Unconditional thank-you gift for this customer, if one was issued. */
-  gift: { link: string; amount: number } | null;
+  /** Unconditional thank-you gift for this customer, if one was offered. */
+  gift: {
+    amount: number;
+    /** Already ordered → redemption link; otherwise null and the customer picks. */
+    link: string | null;
+    productName: string | null;
+    products: { id: string; name: string; imageUrl: string | null }[];
+  } | null;
 };
 
 const ACTIVE = "#F5A623";
@@ -48,19 +54,84 @@ const money = new Intl.NumberFormat("en-US", {
 /**
  * Shown on every step when a gift exists. The gift is a thank-you for the
  * job — copy must never tie it to rating or reviewing (design/README.md).
+ * The customer picks a card here; that click creates the Tremendous order.
  */
-function GiftBanner({ gift }: { gift: NonNullable<Props["gift"]> }) {
+function GiftBanner({
+  gift,
+  businessSlug,
+  token,
+}: {
+  gift: NonNullable<Props["gift"]>;
+  businessSlug: string;
+  token: string | null;
+}) {
+  const [link, setLink] = useState<string | null>(gift.link);
+  const [productName, setProductName] = useState<string | null>(gift.productName);
+  const [choosing, setChoosing] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+
+  function choose(p: { id: string; name: string }) {
+    if (!token || pending) return;
+    setChoosing(p.id);
+    setErr(null);
+    start(async () => {
+      const res = await claimGiftAction({ businessSlug, token, productId: p.id });
+      if (res.ok) {
+        setLink(res.link);
+        setProductName(res.productName);
+        window.location.assign(res.link);
+      } else {
+        setErr(res.error);
+        setChoosing(null);
+      }
+    });
+  }
+
   return (
     <div className="mx-auto mb-5 w-full max-w-[560px] rounded-[14px] border-2 border-dashed border-pce-red-deep bg-pce-cream px-5 py-4 text-center">
       <p className="font-display text-[22px] leading-[1.1] text-pce-red-deep">
         A {money.format(gift.amount)} Thank-You, On Us
       </p>
-      <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
-        Thanks for choosing us. Pick the gift card you like — it&rsquo;s yours either way.
-      </p>
-      <a href={gift.link} target="_blank" rel="noopener" className={cn(kitButton.primary, "text-base")}>
-        Pick Your Gift →
-      </a>
+      {link ? (
+        <>
+          <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
+            Your {productName ?? "gift"} is ready — it&rsquo;s yours either way.
+          </p>
+          <a href={link} target="_blank" rel="noopener" className={cn(kitButton.primary, "text-base")}>
+            Open Your Gift →
+          </a>
+        </>
+      ) : (
+        <>
+          <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
+            Thanks for choosing us. Tap the gift card you&rsquo;d like — it&rsquo;s yours either way.
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {gift.products.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                disabled={pending}
+                onClick={() => choose(p)}
+                className={cn(
+                  "flex flex-col items-center gap-1.5 rounded-xl border border-pce-line border-b-[3px] bg-white px-2 py-3 text-[13px] font-bold text-pce-ink transition-colors hover:border-pce-coral hover:bg-pce-sky/40 disabled:opacity-60",
+                  choosing === p.id && "border-pce-coral",
+                )}
+              >
+                {p.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={p.imageUrl} alt="" className="h-8 w-auto max-w-[96px] object-contain" />
+                ) : (
+                  <span className="h-8" />
+                )}
+                <span>{choosing === p.id ? "Issuing…" : p.name}</span>
+              </button>
+            ))}
+          </div>
+          {err ? <p className="mt-3 text-[13px] text-pce-red-deep">{err}</p> : null}
+        </>
+      )}
     </div>
   );
 }
@@ -125,7 +196,7 @@ export function ReviewFunnel({
   }
 
   const greeting = contactFirstName ? `Thanks, ${contactFirstName}!` : "Thanks for choosing us!";
-  const banner = gift ? <GiftBanner gift={gift} /> : null;
+  const banner = gift ? <GiftBanner gift={gift} businessSlug={businessSlug} token={token} /> : null;
 
   if (step === "rate") {
     return (

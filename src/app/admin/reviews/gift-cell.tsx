@@ -20,6 +20,7 @@ type Props = {
 };
 
 const TONE: Record<string, "default" | "secondary" | "destructive"> = {
+  offered: "secondary",
   created: "secondary",
   delivered: "default",
   failed: "destructive",
@@ -33,8 +34,10 @@ export function GiftCell({ gift }: Props) {
   if (!gift) return <span className="text-xs text-muted-foreground">—</span>;
 
   const label =
-    gift.status === "created"
-      ? "Ready"
+    gift.status === "offered"
+      ? "Offered"
+      : gift.status === "created"
+      ? "Ordered"
       : gift.status === "delivered"
         ? "Delivered"
         : gift.status === "failed"

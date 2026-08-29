@@ -77,9 +77,9 @@ export async function createReviewRequestAction(
       channel: parsed.data.channel,
     });
 
-    // The thank-you gift is unconditional — mint it with the request.
+    // The thank-you gift is unconditional — offer it with the request. The
+    // customer picks the card on the review page (that creates the order).
     const gift = await issueGiftForReviewRequest(req.id);
-    const giftLink = gift?.status === "created" || gift?.status === "delivered" ? gift.redemptionLink : null;
 
     const link = await reviewLinkFor(biz.slug, req.token);
     const brand = brandFor(biz.slug);
@@ -87,7 +87,6 @@ export async function createReviewRequestAction(
       brand,
       firstName: parsed.data.name.split(" ")[0] ?? null,
       reviewLink: link,
-      giftLink,
       giftAmount: gift ? Number(gift.amount) : null,
     };
     const message = buildReviewRequestMessage(msgArgs);
@@ -120,7 +119,7 @@ export async function createReviewRequestAction(
       link,
       message,
       gift: gift
-        ? { status: gift.status, link: giftLink, amount: Number(gift.amount), reason: gift.failureReason }
+        ? { status: gift.status, link: gift.redemptionLink, amount: Number(gift.amount), reason: gift.failureReason }
         : null,
       sent,
     };
@@ -142,5 +141,5 @@ export async function retryGiftAction(giftId: string) {
   const row = await retryGift(giftId);
   revalidatePath("/admin/reviews");
   revalidatePath("/admin");
-  return { ok: row?.status === "created", reason: row?.failureReason ?? null };
+  return { ok: row?.status === "created" || row?.status === "offered", reason: row?.failureReason ?? null };
 }

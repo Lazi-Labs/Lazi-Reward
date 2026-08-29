@@ -26,7 +26,7 @@ export function ReviewRequestForm({ businesses }: { businesses: Biz[] }) {
 
   if (state?.ok) {
     const sms = `sms:?&body=${encodeURIComponent(state.message)}`;
-    const giftOk = state.gift?.link;
+    const giftOk = state.gift && (state.gift.status === "offered" || state.gift.link);
     return (
       <div className="space-y-3 rounded-xl border border-pce-teal/40 bg-pce-sky/40 p-4 text-sm">
         <p className="font-semibold text-pce-navy">Ready for {state.name}</p>
@@ -47,9 +47,10 @@ export function ReviewRequestForm({ businesses }: { businesses: Biz[] }) {
           </p>
           {giftOk ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="secondary">${state.gift!.amount} ready</Badge>
-              <code className="truncate font-mono text-xs text-muted-foreground">{state.gift!.link}</code>
-              <CopyButton value={state.gift!.link!} label="Copy gift link" />
+              <Badge variant="secondary">${state.gift!.amount} offered</Badge>
+              <span className="text-xs text-muted-foreground">
+                Customer picks their card on the review page; the order is placed then.
+              </span>
             </div>
           ) : state.gift ? (
             <p className="text-xs text-pce-red-deep">

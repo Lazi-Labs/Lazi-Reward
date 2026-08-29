@@ -86,7 +86,7 @@ export type ReviewRequestStatus = (typeof reviewRequestStatuses)[number];
 export const giftCardSources = ["review_request", "manual", "referral"] as const;
 export type GiftCardSource = (typeof giftCardSources)[number];
 
-export const giftCardStatuses = ["created", "delivered", "failed", "canceled"] as const;
+export const giftCardStatuses = ["offered", "created", "delivered", "failed", "canceled"] as const;
 export type GiftCardStatus = (typeof giftCardStatuses)[number];
 
 export const giftDeliveryChannels = ["sms", "email", "manual"] as const;
@@ -645,7 +645,10 @@ export const giftCards = pgTable(
     source: text("source").$type<GiftCardSource>().notNull(),
     amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
     currencyCode: varchar("currency_code", { length: 3 }).notNull().default("USD"),
-    status: text("status").$type<GiftCardStatus>().notNull().default("created"),
+    status: text("status").$type<GiftCardStatus>().notNull().default("offered"),
+    /** Tremendous product the customer picked in the funnel. */
+    productId: text("product_id"),
+    productName: text("product_name"),
     /** Idempotency key sent to Tremendous as external_id. */
     externalId: text("external_id").notNull().unique(),
     tremendousOrderId: text("tremendous_order_id"),

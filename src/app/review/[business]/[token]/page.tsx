@@ -3,7 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { BrandFrame } from "@/components/brand/brand-frame";
 import { brandFor } from "@/lib/brand";
-import { getGiftForReviewRequest } from "@/lib/gifts";
+import { getGiftForReviewRequest, productsForGift } from "@/lib/gifts";
 import {
   getReviewRequestByToken,
   googleReviewUrlFor,
@@ -47,6 +47,8 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
 
   const brand = brandFor(req.business.slug);
   const firstName = req.contact.name?.split(" ")[0] ?? null;
+  const showGift = gift && gift.status !== "canceled";
+  const products = showGift && !gift.redemptionLink ? await productsForGift(gift) : [];
 
   return (
     <BrandFrame brand={brand}>
@@ -57,8 +59,13 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
         googleUrl={googleReviewUrlFor(req.business)}
         contactFirstName={firstName}
         gift={
-          gift?.redemptionLink && gift.status !== "canceled"
-            ? { link: gift.redemptionLink, amount: Number(gift.amount) }
+          showGift && (gift.redemptionLink || products.length > 0)
+            ? {
+                amount: Number(gift.amount),
+                link: gift.redemptionLink,
+                productName: gift.productName,
+                products,
+              }
             : null
         }
       />

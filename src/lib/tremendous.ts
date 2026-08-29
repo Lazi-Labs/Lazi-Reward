@@ -138,7 +138,13 @@ export async function getReward(rewardId: string) {
 
 // ── Catalog / funding ────────────────────────────────────────────────────────
 
-export type TremendousProduct = { id: string; name: string; category: string; countries?: unknown };
+export type TremendousProduct = {
+  id: string;
+  name: string;
+  category: string;
+  images?: Array<{ src: string; type: string }>;
+  skus?: Array<{ min: number; max: number }>;
+};
 
 export async function listProducts(country = "US") {
   const res = await request<{ products: TremendousProduct[] }>(
@@ -146,6 +152,37 @@ export async function listProducts(country = "US") {
     `/products?country=${encodeURIComponent(country)}`,
   );
   return res.products;
+}
+
+export type GiftProduct = { id: string; name: string; category: string; imageUrl: string | null };
+
+const productCache = new Map<string, { at: number; items: GiftProduct[] }>();
+
+/**
+ * Products the customer may choose = the business's campaign product list,
+ * filtered to those that accept `amount`. Cached 10 min per campaign.
+ */
+export async function listCampaignProducts(campaignId: string, amount: number): Promise<GiftProduct[]> {
+  const key = `${campaignId}:${amount}`;
+  const hit = productCache.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60 * 1000) return hit.items;
+  const [{ campaign }, all] = await Promise.all([
+    request<{ campaign: { products: string[] } }>("GET", `/campaigns/${encodeURIComponent(campaignId)}`),
+    listProducts("US"),
+  ]);
+  const order = new Map(campaign.products.map((id, i) => [id, i]));
+  const items = all
+    .filter((p) => order.has(p.id))
+    .filter((p) => !p.skus?.length || p.skus.some((s) => amount >= s.min && amount <= s.max))
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((p) => ({
+      id: p.id,
+      name: p.name,
+      category: p.category,
+      imageUrl: p.images?.find((i) => i.type === "logo")?.src ?? p.images?.[0]?.src ?? null,
+    }));
+  productCache.set(key, { at: Date.now(), items });
+  return items;
 }
 
 export type FundingSource = {
