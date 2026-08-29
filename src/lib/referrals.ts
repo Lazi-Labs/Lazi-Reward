@@ -346,6 +346,9 @@ export async function setReferralStatus(referralId: string, status: ReferralStat
  * referral, creates the pending reward, updates the referrer's totals, and
  * tells the referrer to come pick a gift card.
  */
+/** A referral only pays when the friend's job was more than a dispatch/diagnostic visit. */
+export const REFERRAL_MIN_INVOICE = Number(process.env.REFERRAL_MIN_INVOICE ?? 89);
+
 export async function completeReferral(args: {
   referralId: string;
   source: "servicetitan" | "admin" | "poller";
@@ -358,6 +361,20 @@ export async function completeReferral(args: {
     with: { referrer: true, campaign: true },
   });
   if (!row) return { ok: false as const, reason: "not_found" };
+
+  // Automated sources must prove the job was real work (> $89 dispatch fee).
+  // Admin completion is the manual override and skips this check.
+  if (args.source !== "admin") {
+    const total = args.invoiceTotal;
+    if (total == null || !(total > REFERRAL_MIN_INVOICE)) {
+      await setReferralStatus(row.id, "hired", {
+        last_job_id: args.stJobId ?? null,
+        last_invoice_total: total ?? null,
+        below_minimum: true,
+      });
+      return { ok: false as const, reason: "below_minimum" };
+    }
+  }
   const existingReward = await db.query.referralRewards.findFirst({ where: eq(referralRewards.referralId, row.id) });
   if (row.status === "completed" && existingReward) return { ok: true as const, reward: existingReward, already: true };
 

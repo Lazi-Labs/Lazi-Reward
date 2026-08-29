@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { contacts, referrals } from "@/db/schema";
-import { OPEN_REFERRAL_STATUSES, completeReferral, setReferralStatus } from "@/lib/referrals";
+import { OPEN_REFERRAL_STATUSES, REFERRAL_MIN_INVOICE, completeReferral, setReferralStatus } from "@/lib/referrals";
 import { getLead, isServiceTitanConfigured, listCompletedJobsForCustomer } from "@/lib/servicetitan";
 
 export const runtime = "nodejs";
@@ -47,7 +47,10 @@ export async function GET(req: Request) {
       }
       // Completed job after the referral → completed + reward
       const jobs = await listCompletedJobsForCustomer(stCustomerId, r.createdAt);
-      const job = jobs.find((j) => j.completedOn);
+      // Prefer the first qualifying job (more than the dispatch fee); else the latest.
+      const job =
+        jobs.find((j) => j.completedOn && (j.total ?? 0) > REFERRAL_MIN_INVOICE) ??
+        jobs.find((j) => j.completedOn);
       if (job) {
         const res = await completeReferral({
           referralId: r.id,

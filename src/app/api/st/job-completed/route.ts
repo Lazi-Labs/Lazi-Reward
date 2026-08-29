@@ -139,6 +139,11 @@ export async function POST(req: Request) {
       customer_tags: d.customer_tags,
     },
   });
-  if (!result.ok) return NextResponse.json({ matched: true, referralId: referral.id, error: result.reason }, { status: 500 });
+  if (!result.ok) {
+    if (result.reason === "below_minimum") {
+      return NextResponse.json({ matched: true, referralId: referral.id, rewarded: false, reason: "below_minimum" });
+    }
+    return NextResponse.json({ matched: true, referralId: referral.id, error: result.reason }, { status: 500 });
+  }
   return NextResponse.json({ matched: true, referralId: referral.id, rewardId: result.reward.id, already: result.already });
 }
