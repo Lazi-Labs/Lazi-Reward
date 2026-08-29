@@ -113,14 +113,36 @@ export type StCustomer = {
   phoneSettings?: unknown;
 };
 
-export async function findCustomerByPhone(phone: string): Promise<StCustomer | null> {
+/**
+ * Find the customer for this phone. Phones are shared across households /
+ * test records, so a match must also look like the same person: exactly one
+ * result, or one whose name shares a word (last name) with `name`. Otherwise
+ * null → the caller creates a fresh customer instead of attaching to a stranger.
+ */
+export async function findCustomerByPhone(phone: string, name?: string): Promise<StCustomer | null> {
   const digits = phone.replace(/\D/g, "").slice(-10);
   if (digits.length !== 10) return null;
   const res = await request<{ data: StCustomer[] }>(
     "GET",
-    `/crm/v2/tenant/{tenant}/customers?phone=${encodeURIComponent(digits)}&active=True&pageSize=5`,
+    `/crm/v2/tenant/{tenant}/customers?phone=${encodeURIComponent(digits)}&active=True&pageSize=10`,
   );
-  return res.data?.[0] ?? null;
+  const rows = res.data ?? [];
+  if (rows.length === 0) return null;
+  if (rows.length === 1 && !name) return rows[0];
+  const words = (name ?? "")
+    .toLowerCase()
+    .split(/[^a-z]+/)
+    .filter((w) => w.length >= 3);
+  const scored = rows
+    .map((r) => {
+      const rn = r.name.toLowerCase();
+      const hits = words.filter((w) => rn.includes(w)).length;
+      return { r, hits };
+    })
+    .filter((x) => x.hits > 0)
+    .sort((a, b) => b.hits - a.hits);
+  if (scored.length) return scored[0].r;
+  return rows.length === 1 ? rows[0] : null;
 }
 
 export async function getCustomer(id: number): Promise<StCustomer> {
@@ -213,9 +235,17 @@ export type CreateLeadInput = {
   campaignId: number;
   priority: "Low" | "Normal" | "High" | "Urgent";
   summary: string;
+  /** ST requires a follow-up date (or call reason). Defaults to tomorrow 9am ET; emergencies = now. */
+  followUpDate?: Date;
 };
 
 export async function createLead(input: CreateLeadInput) {
+  const followUp = input.followUpDate ?? (() => {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + 1);
+    d.setUTCHours(13, 0, 0, 0); // 9:00 ET
+    return d;
+  })();
   const res = await request<{ id: number; status?: string }>(
     "POST",
     `/crm/v2/tenant/{tenant}/leads`,
@@ -227,6 +257,7 @@ export async function createLead(input: CreateLeadInput) {
       campaignId: input.campaignId,
       priority: input.priority,
       summary: input.summary,
+      followUpDate: followUp.toISOString(),
     },
   );
   return res;

@@ -41,6 +41,22 @@ const schema = z.object({
 });
 
 export type BookingInput = z.infer<typeof schema>;
+
+/** The wizard sends labels like "Tomorrow" or "Mon, Aug 31" — turn them back into a date. */
+function DAY_LABEL_TO_DATE(label: string): Date | null {
+  if (!label) return null;
+  if (/^tomorrow$/i.test(label)) {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  for (let i = 1; i <= 8; i += 1) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    if (d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }) === label) return d;
+  }
+  return null;
+}
 export type BookingResult =
   | { ok: true; referred: boolean; stBooked: boolean; contactId: string }
   | { ok: false; error: string; fieldErrors?: Record<string, string[]> };
@@ -145,7 +161,7 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
     try {
       let customerId: number;
       let locationId: number | null = null;
-      const existing = await findCustomerByPhone(d.phone);
+      const existing = await findCustomerByPhone(d.phone, d.name);
       if (existing) {
         customerId = existing.id;
         locationId = (await getCustomerLocations(customerId))[0]?.id ?? null;
@@ -161,6 +177,8 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
         customerId = created.customerId;
         locationId = created.locationId;
       }
+      refs.st_customer_id = String(customerId);
+      if (locationId) refs.st_location_id = String(locationId);
       const when =
         d.preferredWindow === "asap"
           ? "ASAP — call immediately"
@@ -173,6 +191,13 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
         d.notes ? `Notes: ${d.notes}` : null,
         referralId ? `REFERRAL — code ${code}${referredBy ? ` (referred by ${referredBy})` : ""} — friend gets ${friendOfferFor(campaign ?? { settings: null }) ?? "the referral offer"}; referrer bonus owed on completion.` : null,
       ].filter(Boolean);
+      const followUpDate = (() => {
+        if (svc.emergency || d.preferredWindow === "asap") return new Date(Date.now() + 15 * 60 * 1000);
+        const day = DAY_LABEL_TO_DATE(d.preferredDay || "");
+        const dt = day ?? new Date(Date.now() + 24 * 60 * 60 * 1000);
+        dt.setUTCHours(d.preferredWindow === "afternoon" ? 16 : 13, 0, 0, 0); // 12pm / 9am ET
+        return dt;
+      })();
       const lead = await createLead({
         customerId,
         locationId,
@@ -181,9 +206,8 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
         campaignId: referralId ? ST_IDS.referralCampaignId : ST_IDS.onlineCampaignId,
         priority: svc.priority,
         summary: summaryLines.join("\n"),
+        followUpDate,
       });
-      refs.st_customer_id = String(customerId);
-      if (locationId) refs.st_location_id = String(locationId);
       refs.st_lead_id = String(lead.id);
       stBooked = true;
     } catch (err) {
