@@ -16,7 +16,7 @@ const seedBusinesses = [
   {
     name: "Perfect Catch Electric",
     slug: "perfect-catch-electric",
-    gmbUrl: null,
+    gmbUrl: "https://g.page/r/CUDCVygcLSPwEBM/review",
     reviewTemplate:
       "Perfect Catch Electric did fantastic work — clean, professional, and reasonably priced.",
     avatar: null,

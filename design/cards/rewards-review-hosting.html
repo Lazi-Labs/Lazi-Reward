@@ -1,0 +1,74 @@
+<!-- @dsCard group="Rewards App" name="Review hosting" subtitle="Live implementation of the Review Funnel template — /review/{business} and /review/{business}/{token} in pce-rewards, plus the admin link generator" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:28px;background:linear-gradient(180deg,var(--pce-sky) 0%,var(--pce-sand) 100%);color:var(--pce-text)}
+  h1{font-size:22px;margin:0 0 4px}
+  p.sub{margin:0 0 20px;color:var(--pce-muted);font-size:13px}
+  .grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;align-items:start}
+  .card{background:#fff;border:1px solid #D9E6F0;border-bottom:5px solid var(--pce-teal);border-radius:16px;padding:28px 24px;box-shadow:0 20px 50px rgba(0,40,70,.14)}
+  .navy{background:radial-gradient(700px 320px at 78% 0%,rgba(87,200,242,.2),transparent 62%),linear-gradient(160deg,#0A4A7A,var(--pce-navy) 55%,var(--pce-navy-deep));border-bottom:5px solid var(--pce-teal);border-radius:16px;padding:28px 24px;color:#fff;box-shadow:0 20px 50px rgba(0,40,70,.28)}
+  .logo{display:block;width:150px;margin:0 auto 16px}
+  .stars{font-size:34px;line-height:1;color:#D9E6F0;text-align:center;letter-spacing:2px}
+  .stars b{color:#F5A623;font-weight:400}
+  .h{font-family:var(--pce-font-display);text-transform:uppercase;line-height:1.05;margin:0 0 8px}
+  .btn{display:inline-block;font-family:var(--pce-font-display);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;border-radius:12px;padding:14px 22px 11px;font-size:15px;line-height:1;border:1px solid var(--pce-red-deep);border-bottom-width:4px;background:var(--pce-coral);color:#fff}
+  .btn.sec{background:#fff;color:var(--pce-navy);border-color:var(--pce-navy)}
+  .promo{background:var(--pce-cream);border:2px dashed var(--pce-red-deep);border-radius:14px;padding:14px;margin:12px 0}
+  .opt{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #D9E6F0;border-bottom-width:3px;border-radius:12px;padding:9px 12px;margin-bottom:8px;color:var(--pce-text);font-size:14px}
+  .opt i{width:28px;height:28px;border-radius:8px;background:#252B37;display:inline-block}
+  .opt .dot{margin-left:auto;width:16px;height:16px;border-radius:50%;border:2px solid #9DB4C6;box-sizing:border-box}
+  .opt .dot.on{border:5px solid var(--pce-coral)}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--pce-sky);font-size:14px}
+  .row .stars{font-size:18px;letter-spacing:0}
+  .admin{grid-column:1/-1;background:#fff;border:1px solid #D9E6F0;border-radius:14px;padding:18px 20px}
+  .admin h3{margin:0 0 4px;font-size:15px}
+  .admin p{margin:0 0 10px;font-size:12.5px;color:var(--pce-body)}
+  .link{display:flex;align-items:center;gap:10px;border:1px solid #D9E6F0;border-radius:10px;padding:10px 12px;margin-bottom:8px;font-size:13px}
+  .link code{flex:1;font-family:ui-monospace,monospace;font-size:11.5px;color:var(--pce-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--pce-sky);color:var(--pce-navy)}
+  .mini{border:1px solid #D9E6F0;border-radius:8px;padding:6px 10px;font-size:12.5px;background:#fff}
+</style></head><body>
+<h1 class="h">Review hosting — pce-rewards</h1>
+<p class="sub">Customers tap a review request → land on <code>/review/{business}/{token}</code>. Rating ≥ 4 goes to the Google step with a gift card; below goes to the questionnaire and can open a manager-callback task. Source template: templates/review-funnel/ReviewFunnel.dc.html.</p>
+
+<div class="grid">
+  <div class="card" style="text-align:center">
+    <img class="logo" src="../assets/logo-full.webp" alt="">
+    <h2 class="h" style="font-size:26px;color:var(--pce-navy)">How Did We Do?</h2>
+    <p style="font-size:14px;color:var(--pce-body);margin:0 0 14px">Thanks, Jane! Tap a star to rate your recent Perfect Catch service visit.</p>
+    <div class="stars"><b>★★★★</b>★</div>
+    <p style="font-size:12.5px;color:var(--pce-muted);margin:12px 0 0">4 of 5 stars</p>
+  </div>
+
+  <div class="navy" style="text-align:center">
+    <div style="font-size:26px;color:var(--pce-cream);line-height:1">★★★★★</div>
+    <h2 class="h" style="font-size:22px;color:var(--pce-cream)">You Just Made Our Day!</h2>
+    <div class="promo"><p class="h" style="font-size:17px;color:var(--pce-red-deep);margin:0 0 4px">A $25 Gift Card, On Us</p><p style="font-size:12.5px;color:var(--pce-brown);margin:0">Pick your gift card, then leave a quick Google review.</p></div>
+    <p class="h" style="font-size:12px;color:var(--pce-cream);text-align:left;letter-spacing:.5px">1. Pick Your Reward</p>
+    <div class="opt"><i></i>Prepaid Mastercard<span class="dot on"></span></div>
+    <div class="opt"><i style="background:#3D95CE"></i>Venmo<span class="dot"></span></div>
+    <p class="h" style="font-size:12px;color:var(--pce-cream);text-align:left;letter-spacing:.5px">2. Leave Your Review</p>
+    <a class="btn" href="#">Leave Us a Google Review →</a>
+  </div>
+
+  <div class="card">
+    <h2 class="h" style="font-size:22px;color:var(--pce-navy);text-align:center">Help Us Make It Right</h2>
+    <div class="row">Technician performance<span class="stars"><b>★★★</b>★★</span></div>
+    <div class="row">Office communication<span class="stars"><b>★</b>★★★★</span></div>
+    <div class="row">Estimate clarity<span class="stars">★★★★★</span></div>
+    <p class="h" style="font-size:12px;color:var(--pce-navy);margin:14px 0 6px">Tell us what happened</p>
+    <div class="mini" style="border-color:var(--pce-teal);border-bottom-width:3px;color:var(--pce-muted);min-height:44px">Share any details…</div>
+    <a class="btn" href="#" style="display:block;text-align:center;margin-top:12px;font-size:13px">Request a Manager to Call You</a>
+    <a class="btn sec" href="#" style="display:block;text-align:center;margin-top:8px;font-size:12px">Just Send My Feedback</a>
+  </div>
+
+  <div class="admin">
+    <h3>Admin › Reviews — review hosting links</h3>
+    <p>Business links go on QR codes and invoices. The form mints a per-customer tokenized link (creates the contact if needed) so status moves link ready → opened → responded. Hosting domain comes from <code>NEXT_PUBLIC_REVIEW_BASE_URL</code>.</p>
+    <div class="link"><strong>Perfect Catch Electric</strong><code>https://review.callperfectcatch.com/review/perfect-catch-electric</code><span class="mini">Copy</span><span class="mini">Open</span></div>
+    <div class="link"><strong>LIV Pools</strong><code>https://review.callperfectcatch.com/review/liv-pools</code><span class="mini">Copy</span><span class="mini">Open</span></div>
+    <div class="link"><strong>Jane Doe</strong><span class="pill">Opened</span><code>…/review/perfect-catch-electric/k7m2q9x4tz8p</code><span class="mini">Copy</span></div>
+  </div>
+</div>
+</body></html>

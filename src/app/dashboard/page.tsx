@@ -1,23 +1,21 @@
+import Image from "next/image";
+import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
 
+import { BrandCard } from "@/components/brand/brand-frame";
+import { brandFor } from "@/lib/brand";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import {
+  friendOfferFor,
   getOrCreateReferrerForUser,
   getReferralStats,
   listReferralsForReferrer,
+  listRewardsForReferrer,
 } from "@/lib/referrals";
 import { ensureCurrentUser } from "@/lib/users";
 
-import { ReferralForm } from "./referral-form";
+import { ReferHero } from "./refer-hero";
 import { ReferralPipeline } from "./referral-pipeline";
-import { ShareLink } from "./share-link";
+import { RewardClaim } from "./reward-claim";
 
 const dollarFmt = new Intl.NumberFormat("en-US", {
   style: "currency",
@@ -25,107 +23,99 @@ const dollarFmt = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
+function Stat({ label, value, note }: { label: string; value: string; note: string }) {
+  return (
+    <BrandCard className="px-6 py-6">
+      <p className="mb-1 text-xs font-bold uppercase tracking-[1.2px] text-pce-muted">{label}</p>
+      <p className="font-display text-[40px] text-pce-navy">{value}</p>
+      <p className="mt-1 text-sm text-pce-body">{note}</p>
+    </BrandCard>
+  );
+}
+
 export default async function DashboardPage() {
   const user = await ensureCurrentUser();
   const { referrer, campaign } = await getOrCreateReferrerForUser(user.id);
-  const [stats, rows] = await Promise.all([
+  const [stats, rows, rewards] = await Promise.all([
     getReferralStats(referrer.id),
     listReferralsForReferrer(referrer.id),
+    listRewardsForReferrer(referrer.id),
   ]);
 
   const rewardAmount = dollarFmt.format(Number(campaign.rewardAmount));
+  const friendOffer = friendOfferFor(campaign);
+  const brand = brandFor(null);
+  const claimable = rewards.filter((r) => r.status === "pending");
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-6 py-10">
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-widest text-muted-foreground">
-            LAZI Rewards
-          </p>
-          <h1 className="text-3xl font-bold">
-            Welcome, {user.name?.split(" ")[0] ?? "there"}
-          </h1>
-        </div>
-        <UserButton />
-      </header>
-
-      <Separator />
-
-      <section className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardDescription>Rewards earned</CardDescription>
-            <CardTitle className="text-3xl">
-              {dollarFmt.format(stats.totalEarningsCents / 100)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Earn {rewardAmount} per converted referral.
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>In progress</CardDescription>
-            <CardTitle className="text-3xl">
-              {stats.pending + stats.inProgress}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            People you&rsquo;ve referred who haven&rsquo;t booked yet.
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Completed</CardDescription>
-            <CardTitle className="text-3xl">{stats.completed}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Jobs that&rsquo;ve closed and rewards issued.
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-6 lg:grid-cols-5">
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Share your referral link</CardTitle>
-            <CardDescription>
-              Send it via text, email, or social — every conversion earns you{" "}
-              {rewardAmount}.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ShareLink
-              link={referrer.referralLink}
-              rewardAmount={rewardAmount}
+    <div className="pce-wash min-h-screen">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8">
+        <header className="flex items-center justify-between">
+          <Link href="/">
+            <Image
+              src={brand.logo}
+              alt={brand.logoAlt}
+              width={180}
+              height={102}
+              priority
+              className="h-auto w-[180px]"
             />
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Submit a referral</CardTitle>
-            <CardDescription>
-              Have someone in mind? Drop their info and we&rsquo;ll reach out.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ReferralForm />
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-end justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Your referrals</h2>
-            <p className="text-sm text-muted-foreground">
-              Status updates as our team contacts and books each one.
+          </Link>
+          <div className="flex items-center gap-4">
+            <p className="hidden text-sm text-pce-body sm:block">
+              Hi, {user.name?.split(" ")[0] ?? "there"}
             </p>
+            <UserButton />
           </div>
-        </div>
-        <ReferralPipeline rows={rows} />
-      </section>
+        </header>
+
+        {claimable.length > 0 ? (
+          <RewardClaim rewards={claimable} rewardAmountFmt={dollarFmt.format} />
+        ) : null}
+
+        <section className="grid gap-5 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <ReferHero
+              link={referrer.referralLink}
+              rewardYou={rewardAmount}
+              friendOffer={friendOffer}
+              brandName={brand.name}
+            />
+          </div>
+          <div className="grid gap-5 lg:col-span-2">
+            <Stat
+              label="Rewards earned"
+              value={dollarFmt.format(stats.totalEarningsCents / 100)}
+              note={`Earn ${rewardAmount} per completed referral.`}
+            />
+            <Stat
+              label="In progress"
+              value={String(stats.pending + stats.inProgress)}
+              note="People you've referred who haven't finished a job yet."
+            />
+            <Stat
+              label="Completed"
+              value={String(stats.completed)}
+              note="Jobs that've closed and rewards issued."
+            />
+          </div>
+        </section>
+
+        <BrandCard className="px-6 py-7">
+          <h2 className="font-display text-2xl text-pce-navy">Your Referrals</h2>
+          <p className="mb-4 text-sm text-pce-body">
+            Status updates as our team contacts and books each one.
+          </p>
+          <ReferralPipeline rows={rows} />
+        </BrandCard>
+
+        <p className="text-center text-[13.5px] text-pce-muted">
+          {brand.longName} ·{" "}
+          <a href={brand.phoneHref} className="font-bold text-pce-coral">
+            {brand.phone}
+          </a>
+        </p>
+      </div>
     </div>
   );
 }

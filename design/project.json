@@ -1,0 +1,17 @@
+{
+  "projectId": "b166afc9-f1a8-4a50-b511-3c56054ad40c",
+  "projectName": "PCE Website",
+  "url": "https://claude.ai/design/p/b166afc9-f1a8-4a50-b511-3c56054ad40c",
+  "group": "Rewards App",
+  "sources": {
+    "tokens": "styles.css",
+    "logo": "assets/logo-full.webp",
+    "displayFont": "assets/fonts/BurbankBig-Bold.woff2",
+    "reviewFunnel": "templates/review-funnel/ReviewFunnel.dc.html",
+    "referral": "templates/referral/Referral.dc.html"
+  },
+  "cards": [
+    "components/rewards-review-hosting.html",
+    "components/rewards-referral-dashboard.html"
+  ]
+}

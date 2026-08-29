@@ -1,22 +1,29 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sofia_Sans } from "next/font/google";
+import localFont from "next/font/local";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Brand type from the PCE Website design project:
+// Burbank Big (display, self-hosted) + Sofia Sans (body, Google Fonts).
+const burbank = localFont({
+  src: "../fonts/BurbankBig-Bold.woff2",
+  weight: "700",
+  variable: "--font-burbank",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const sofia = Sofia_Sans({
   subsets: ["latin"],
+  weight: ["400", "500", "700", "800"],
+  variable: "--font-sofia",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "LAZI Rewards",
+  title: "Perfect Catch Rewards",
   description:
-    "Customer rewards, referrals, and reviews for LIV Pools and Perfect Catch Electric.",
+    "Customer rewards, referrals, and reviews for Perfect Catch Electric and LIV Pools.",
 };
 
 export default function RootLayout({
@@ -28,7 +35,7 @@ export default function RootLayout({
     <ClerkProvider>
       <html
         lang="en"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${burbank.variable} ${sofia.variable} h-full antialiased`}
       >
         <body className="min-h-full flex flex-col bg-background text-foreground">
           {children}

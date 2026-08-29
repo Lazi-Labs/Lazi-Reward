@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import { createManualReferral } from "@/lib/referrals";
+import { PAYOUT_IDS } from "@/lib/brand";
+import {
+  claimReward,
+  createManualReferral,
+  getOrCreateReferrerForUser,
+} from "@/lib/referrals";
 import { ensureCurrentUser } from "@/lib/users";
 
 const submitReferralSchema = z
@@ -67,6 +72,39 @@ export async function submitReferralAction(
     return { ok: false, error: "Could not save your referral. Try again." };
   }
 
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+// ── Reward claim ─────────────────────────────────────────────────────────────
+
+const claimSchema = z.object({
+  rewardId: z.string().uuid(),
+  paymentMethod: z.enum(PAYOUT_IDS),
+  paymentDetails: z.string().max(200).optional(),
+});
+
+export type ClaimRewardResult = { ok: true } | { ok: false; error: string };
+
+export async function claimRewardAction(
+  input: z.infer<typeof claimSchema>,
+): Promise<ClaimRewardResult> {
+  const parsed = claimSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Pick a payout option." };
+  try {
+    const user = await ensureCurrentUser();
+    const { referrer } = await getOrCreateReferrerForUser(user.id);
+    const updated = await claimReward({
+      rewardId: parsed.data.rewardId,
+      referrerId: referrer.id,
+      paymentMethod: parsed.data.paymentMethod,
+      paymentDetails: parsed.data.paymentDetails?.trim() || undefined,
+    });
+    if (!updated) return { ok: false, error: "That reward is no longer claimable." };
+  } catch (err) {
+    console.error("claimRewardAction failed", err);
+    return { ok: false, error: "Could not save your choice. Try again." };
+  }
   revalidatePath("/dashboard");
   return { ok: true };
 }

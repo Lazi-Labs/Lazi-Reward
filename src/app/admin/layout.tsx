@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { UserButton } from "@clerk/nextjs";
-import { LayoutDashboard, ListChecks, Users } from "lucide-react";
+import { LayoutDashboard, ListChecks, Star, Users } from "lucide-react";
 
 import { Separator } from "@/components/ui/separator";
 import { requireAdmin } from "@/lib/admin";
@@ -9,6 +9,7 @@ const NAV = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/referrals", label: "Referrals", icon: ListChecks },
   { href: "/admin/contacts", label: "Contacts", icon: Users },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
 ];
 
 export default async function AdminLayout({
@@ -23,7 +24,7 @@ export default async function AdminLayout({
       <aside className="hidden border-r bg-muted/20 md:block">
         <div className="flex h-full flex-col gap-6 p-6">
           <Link href="/admin" className="text-sm font-semibold">
-            LAZI Admin
+            Perfect Catch Admin
           </Link>
           <nav className="flex flex-col gap-1 text-sm">
             {NAV.map((n) => {
@@ -54,7 +55,7 @@ export default async function AdminLayout({
       <div className="flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b px-6 py-4 md:hidden">
           <Link href="/admin" className="text-sm font-semibold">
-            LAZI Admin
+            Perfect Catch Admin
           </Link>
           <UserButton />
         </header>

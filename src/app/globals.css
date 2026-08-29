@@ -7,9 +7,26 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Geist", "Geist Fallback", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sofia), "Sofia Sans", Arial, ui-sans-serif, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", ui-monospace, monospace;
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-burbank), "Burbank Big", Impact, sans-serif;
+  /* Perfect Catch brand palette — mirrors styles.css in the PCE Website design project */
+  --color-pce-coral: var(--pce-coral);
+  --color-pce-coral-dark: var(--pce-coral-dark);
+  --color-pce-red-deep: var(--pce-red-deep);
+  --color-pce-navy: var(--pce-navy);
+  --color-pce-navy-deep: var(--pce-navy-deep);
+  --color-pce-teal: var(--pce-teal);
+  --color-pce-teal-dark: var(--pce-teal-dark);
+  --color-pce-cream: var(--pce-cream);
+  --color-pce-sky: var(--pce-sky);
+  --color-pce-sand: var(--pce-sand);
+  --color-pce-brown: var(--pce-brown);
+  --color-pce-ink: var(--pce-ink);
+  --color-pce-body: var(--pce-body);
+  --color-pce-muted: var(--pce-muted);
+  --color-pce-line: var(--pce-line);
+  --color-pce-sky-deep: var(--pce-sky-deep);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,38 +66,57 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* ── Perfect Catch brand tokens (source of truth: PCE Website design project, styles.css) ── */
+  --pce-coral: #F24E45;
+  --pce-coral-dark: #DD4A43;
+  --pce-red-deep: #A7130C;
+  --pce-navy: #003D6A;
+  --pce-navy-deep: #052B49;
+  --pce-teal: #42BE9F;
+  --pce-teal-dark: #143930;
+  --pce-cream: #FEDFAE;
+  --pce-sky: #E6F4FF;
+  --pce-sand: #FFF5E6;
+  --pce-brown: #653F01;
+  --pce-ink: #001E33;
+  --pce-body: #3F444B;
+  --pce-muted: #706F6F;
+  --pce-line: #D9E6F0;
+  --pce-sky-deep: #C9DCEA;
+
+  /* ── shadcn semantic tokens mapped onto the brand ── */
+  --background: #FFFFFF;
+  --foreground: var(--pce-ink);
+  --card: #FFFFFF;
+  --card-foreground: var(--pce-ink);
+  --popover: #FFFFFF;
+  --popover-foreground: var(--pce-ink);
+  --primary: var(--pce-coral);
+  --primary-foreground: #FFFFFF;
+  --secondary: var(--pce-navy);
+  --secondary-foreground: #FFFFFF;
+  --muted: var(--pce-sky);
+  --muted-foreground: var(--pce-muted);
+  --accent: var(--pce-sky);
+  --accent-foreground: var(--pce-navy);
+  --destructive: var(--pce-red-deep);
+  --border: var(--pce-line);
+  --input: var(--pce-teal);
+  --ring: var(--pce-teal);
+  --chart-1: var(--pce-coral);
+  --chart-2: var(--pce-navy);
+  --chart-3: var(--pce-teal);
+  --chart-4: var(--pce-cream);
+  --chart-5: var(--pce-brown);
+  --radius: 0.75rem;
+  --sidebar: var(--pce-navy);
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: var(--pce-coral);
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(255, 255, 255, 0.1);
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border: rgba(255, 255, 255, 0.15);
+  --sidebar-ring: var(--pce-teal);
 }
 
 .dark {
@@ -127,4 +163,20 @@
   html {
     @apply font-sans;
   }
+}
+
+/* ── Brand utilities ── */
+@utility pce-wash {
+  background: linear-gradient(180deg, var(--pce-sky) 0%, var(--pce-sand) 100%);
+}
+@utility pce-navy-card {
+  background:
+    radial-gradient(700px 320px at 78% 0%, rgba(87, 200, 242, 0.2), transparent 62%),
+    linear-gradient(160deg, #0a4a7a, var(--pce-navy) 55%, var(--pce-navy-deep));
+}
+@utility font-display {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1.05;
 }

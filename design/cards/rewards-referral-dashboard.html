@@ -1,0 +1,70 @@
+<!-- @dsCard group="Rewards App" name="Referral dashboard" subtitle="Live implementation of the Referral Program template — customer /dashboard in pce-rewards: refer hero, share links, stats, reward claim" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body{margin:0;padding:28px;background:linear-gradient(180deg,var(--pce-sky) 0%,var(--pce-sand) 100%);color:var(--pce-text)}
+  h1{font-size:22px;margin:0 0 4px}
+  p.sub{margin:0 0 20px;color:var(--pce-muted);font-size:13px}
+  .h{font-family:var(--pce-font-display);text-transform:uppercase;line-height:1.05;margin:0 0 8px}
+  .wrap{display:grid;grid-template-columns:3fr 2fr;gap:18px;align-items:start}
+  .navy{background:radial-gradient(700px 320px at 78% 0%,rgba(87,200,242,.2),transparent 62%),linear-gradient(160deg,#0A4A7A,var(--pce-navy) 55%,var(--pce-navy-deep));border-bottom:5px solid var(--pce-teal);border-radius:16px;padding:28px 26px;color:#fff;box-shadow:0 20px 50px rgba(0,40,70,.28)}
+  .card{background:#fff;border:1px solid #D9E6F0;border-bottom:5px solid var(--pce-teal);border-radius:16px;padding:20px 22px;box-shadow:0 20px 50px rgba(0,40,70,.14);margin-bottom:14px}
+  .inp{background:#fff;border:1px solid var(--pce-navy);border-radius:12px;padding:11px 13px;font-size:13.5px;color:var(--pce-muted)}
+  .g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .btn{display:inline-block;font-family:var(--pce-font-display);font-weight:700;text-transform:uppercase;letter-spacing:.5px;text-decoration:none;border-radius:12px;padding:14px 22px 11px;font-size:15px;line-height:1;border:1px solid var(--pce-red-deep);border-bottom-width:4px;background:var(--pce-coral);color:#fff;text-align:center}
+  .btn.ghost{background:transparent;border-color:#fff;font-size:12px;padding:10px 16px 8px}
+  .btn.sec{background:#fff;color:var(--pce-navy);border-color:var(--pce-navy);font-size:13px}
+  .how{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:14px 16px;margin-top:16px;font-size:13.5px;line-height:1.5}
+  .how b{color:var(--pce-teal)}
+  .stat small{display:block;font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--pce-muted)}
+  .stat .n{font-family:var(--pce-font-display);font-size:34px;color:var(--pce-navy);line-height:1.1}
+  .stat p{margin:2px 0 0;font-size:12.5px;color:var(--pce-body)}
+  .reward{background:linear-gradient(160deg,#0A4A7A,var(--pce-navy) 60%,var(--pce-navy-deep));border-radius:14px;padding:14px 16px;color:#fff;margin-bottom:10px}
+  .opt{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #D9E6F0;border-bottom-width:3px;border-radius:12px;padding:8px 11px;margin-bottom:7px;font-size:13.5px}
+  .opt i{width:26px;height:26px;border-radius:8px;background:#252B37;display:inline-block}
+  .opt .dot{margin-left:auto;width:15px;height:15px;border-radius:50%;border:2px solid #9DB4C6;box-sizing:border-box}
+  .opt .dot.on{border:5px solid var(--pce-coral)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--pce-muted);padding:6px 0;border-bottom:1px solid #D9E6F0}
+  td{padding:8px 0;border-bottom:1px solid var(--pce-sky)}
+  .pill{font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;background:var(--pce-sky);color:var(--pce-navy)}
+  .pill.on{background:var(--pce-teal);color:#fff}
+</style></head><body>
+<h1 class="h">Referral dashboard — pce-rewards</h1>
+<p class="sub">Signed-in customer view at <code>/dashboard</code>. Refer hero + share links + reward claim are ports of templates/referral/Referral.dc.html wired to the live referral system (referrers, referrals, referral_rewards).</p>
+
+<div class="wrap">
+  <div>
+    <div class="navy">
+      <span class="h" style="font-size:11px;letter-spacing:1.5px;color:var(--pce-teal);display:inline-block">Refer a Friend</span>
+      <h2 class="h" style="font-size:28px;color:var(--pce-cream)">$200 for every friend you send.</h2>
+      <p style="font-size:14px;line-height:1.5;margin:0 0 16px">Send a friend to Perfect Catch. Once their job is complete, you pick a $200 gift card.</p>
+      <div class="g2"><div class="inp">Friend's name</div><div class="inp">Friend's phone</div></div>
+      <div class="g2"><div class="inp">Friend's email (optional)</div><div class="inp">Anything we should know?</div></div>
+      <a class="btn" href="#" style="display:block">Send Referral</a>
+      <p style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#C9DCEA;text-align:center;margin:14px 0 8px">Or share your link</p>
+      <div style="display:flex;gap:8px;justify-content:center;margin-bottom:8px"><a class="btn ghost" href="#">Text a Friend</a><a class="btn ghost" href="#">Facebook</a><a class="btn ghost" href="#">X</a></div>
+      <a class="btn sec" href="#" style="display:block">Copy Referral Link</a>
+      <div class="how"><p class="h" style="font-size:12px;color:var(--pce-cream);margin:0 0 8px">How It Works</p><b>1.</b> Refer a friend or share your link.<br><b>2.</b> They book their first service call with us.<br><b>3.</b> When their job is complete, you pick a $200 gift card.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card stat"><small>Rewards earned</small><div class="n">$200</div><p>Earn $200 per completed referral.</p></div>
+    <div class="card stat"><small>In progress</small><div class="n">2</div><p>People you've referred who haven't finished a job yet.</p></div>
+    <div class="card">
+      <div class="reward"><span class="h" style="font-size:11px;letter-spacing:1.5px;color:var(--pce-teal);display:inline-block">Your Reward</span><div class="h" style="font-size:32px;color:var(--pce-cream)">$200</div><span style="font-size:12px;color:#C9DCEA">Referral bonus · Mike's job is complete</span></div>
+      <div class="opt"><i></i>Prepaid Mastercard<span class="dot on"></span></div>
+      <div class="opt"><i style="background:#00D632"></i>Cash App<span class="dot"></span></div>
+      <a class="btn" href="#" style="display:block;margin-top:8px;font-size:13px">Send My Reward</a>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:4px">
+  <h2 class="h" style="font-size:18px;color:var(--pce-navy)">Your Referrals</h2>
+  <table><tr><th>Name</th><th>Contact</th><th>Status</th><th style="text-align:right">Submitted</th></tr>
+  <tr><td>Mike Alvarez</td><td style="color:var(--pce-muted)">727-555-0142</td><td><span class="pill on">Completed</span></td><td style="text-align:right;color:var(--pce-muted)">Aug 12, 2026</td></tr>
+  <tr><td>Dana Whitfield</td><td style="color:var(--pce-muted)">dana@example.com</td><td><span class="pill">Contacted</span></td><td style="text-align:right;color:var(--pce-muted)">Aug 24, 2026</td></tr>
+  <tr><td>Chris Nguyen</td><td style="color:var(--pce-muted)">727-555-0199</td><td><span class="pill">New</span></td><td style="text-align:right;color:var(--pce-muted)">Aug 28, 2026</td></tr></table>
+</div>
+</body></html>

@@ -5,9 +5,11 @@ import { db } from "@/db";
 import {
   contacts,
   referralCampaigns,
+  referralRewards,
   referrals,
   referrers,
   type ReferralStatus,
+  type RewardStatus,
 } from "@/db/schema";
 
 /**
@@ -249,3 +251,67 @@ export const REFERRAL_STATUSES_FOR_DISPLAY: Record<ReferralStatus, string> = {
 };
 
 void inArray; // reserved for filtered queries in later phases
+
+// ── Rewards (claim flow) ─────────────────────────────────────────────────────
+
+export type ClaimableReward = {
+  id: string;
+  amount: string;
+  status: RewardStatus;
+  paymentMethod: string | null;
+  referredName: string;
+  createdAt: Date;
+};
+
+/** Rewards the referrer can still pick a payout for (pending) plus in-flight ones. */
+export async function listRewardsForReferrer(
+  referrerId: string,
+): Promise<ClaimableReward[]> {
+  const rows = await db
+    .select({
+      id: referralRewards.id,
+      amount: referralRewards.amount,
+      status: referralRewards.status,
+      paymentMethod: referralRewards.paymentMethod,
+      referredName: contacts.name,
+      createdAt: referralRewards.createdAt,
+    })
+    .from(referralRewards)
+    .innerJoin(referrals, eq(referralRewards.referralId, referrals.id))
+    .innerJoin(contacts, eq(referrals.referredContactId, contacts.id))
+    .where(eq(referralRewards.referrerId, referrerId))
+    .orderBy(desc(referralRewards.createdAt));
+  return rows.map((r) => ({ ...r, status: r.status as RewardStatus }));
+}
+
+/** Customer chose how they want a pending reward paid. */
+export async function claimReward(args: {
+  rewardId: string;
+  referrerId: string;
+  paymentMethod: string;
+  paymentDetails?: string;
+}) {
+  const [updated] = await db
+    .update(referralRewards)
+    .set({
+      paymentMethod: args.paymentMethod,
+      paymentDetails: args.paymentDetails ?? null,
+      status: "processing",
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(referralRewards.id, args.rewardId),
+        eq(referralRewards.referrerId, args.referrerId),
+        eq(referralRewards.status, "pending"),
+      ),
+    )
+    .returning();
+  return updated ?? null;
+}
+
+/** Optional "friend gets X off" copy stored on campaign.settings.friendOffer. */
+export function friendOfferFor(campaign: { settings: Record<string, unknown> | null }) {
+  const v = campaign.settings?.friendOffer;
+  return typeof v === "string" && v.trim() ? v.trim() : null;
+}
