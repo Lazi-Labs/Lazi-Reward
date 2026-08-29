@@ -57,15 +57,15 @@ export async function listAllReferrals(
       referredName: contacts.name,
       referredEmail: contacts.email,
       referredPhone: contacts.phone,
-      referrerName: users.name,
-      referrerEmail: users.email,
+      referrerName: sql<string | null>`COALESCE(${users.name}, (SELECT c.name FROM contacts c WHERE c.id = ${referrers.contactId}))`,
+      referrerEmail: sql<string>`COALESCE(${users.email}, '')`,
       campaignName: referralCampaigns.name,
       businessName: sql<string | null>`'TBD'`, // joined below
     })
     .from(referrals)
     .innerJoin(contacts, eq(referrals.referredContactId, contacts.id))
     .innerJoin(referrers, eq(referrals.referrerId, referrers.id))
-    .innerJoin(users, eq(referrers.userId, users.id))
+    .leftJoin(users, eq(referrers.userId, users.id))
     .innerJoin(
       referralCampaigns,
       eq(referrals.campaignId, referralCampaigns.id),

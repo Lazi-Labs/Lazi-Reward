@@ -6,6 +6,7 @@ import { z } from "zod";
 import { brandFor } from "@/lib/brand";
 import { issueGiftForReviewRequest } from "@/lib/gifts";
 import { buildReviewRequestMessage } from "@/lib/messages";
+import { getOrCreateReferrerForContact } from "@/lib/referrals";
 import { createReviewRequest, getBusinessBySlug, reviewLinkFor } from "@/lib/reviews";
 
 export const runtime = "nodejs";
@@ -89,9 +90,12 @@ export async function POST(req: Request) {
     });
     if (existing) {
       const url = await reviewLinkFor(biz.slug, existing.token);
+      const ref = await getOrCreateReferrerForContact(existing.contactId).catch(() => null);
       return NextResponse.json(
         {
           url,
+          referralUrl: ref?.referrer.referralLink ?? null,
+          referralCode: ref?.referrer.referralCode ?? null,
           token: existing.token,
           requestId: existing.id,
           contactId: existing.contactId,
@@ -120,6 +124,10 @@ export async function POST(req: Request) {
   });
   const gift = await issueGiftForReviewRequest(request.id);
   const url = await reviewLinkFor(biz.slug, request.token);
+  const ref = await getOrCreateReferrerForContact(request.contactId).catch((err) => {
+    console.error("referrer mint failed", err);
+    return null;
+  });
   const message = buildReviewRequestMessage({
     brand: brandFor(biz.slug),
     firstName: data.name.split(" ")[0] ?? null,
@@ -130,6 +138,8 @@ export async function POST(req: Request) {
   return NextResponse.json(
     {
       url,
+      referralUrl: ref?.referrer.referralLink ?? null,
+      referralCode: ref?.referrer.referralCode ?? null,
       token: request.token,
       requestId: request.id,
       contactId: request.contactId,

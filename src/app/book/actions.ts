@@ -5,9 +5,9 @@ import { cookies, headers } from "next/headers";
 import { z } from "zod";
 
 import { db } from "@/db";
-import { communicationLogs, contacts, referrals, referrers, users } from "@/db/schema";
+import { communicationLogs, contacts, referrals, referrers } from "@/db/schema";
 import { brandFor } from "@/lib/brand";
-import { attributeReferral, emitReferralEvent, friendOfferFor, getActiveCampaign } from "@/lib/referrals";
+import { attributeReferral, emitReferralEvent, friendOfferFor, getActiveCampaign, referrerIdentity } from "@/lib/referrals";
 import {
   ServiceTitanError,
   ST_IDS,
@@ -66,12 +66,12 @@ export type BookingResult =
 export async function referralPreview(code: string) {
   const r = await db.query.referrers.findFirst({
     where: eq(referrers.referralCode, code.trim().toUpperCase()),
-    with: { user: true, campaign: true },
+    with: { user: true, contact: true, campaign: true },
   });
   if (!r || !r.campaign.isActive) return null;
   return {
     code: r.referralCode,
-    referrerFirst: r.user.name?.split(" ")[0] ?? "A friend",
+    referrerFirst: (r.user?.name ?? r.contact?.name)?.split(" ")[0] ?? "A friend",
     friendOffer: friendOfferFor(r.campaign),
   };
 }
@@ -127,8 +127,8 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
     if (res.ok) {
       contactId = res.contactId;
       referralId = res.referral.id;
-      const ru = await db.query.users.findFirst({ where: eq(users.id, res.referrerUserId) });
-      referredBy = ru?.name ?? null;
+      const who = await referrerIdentity(res.referrerId);
+      referredBy = who?.name ?? null;
     }
     // self-referral / unknown code: fall through as a normal booking
   }

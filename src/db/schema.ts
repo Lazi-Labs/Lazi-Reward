@@ -234,9 +234,10 @@ export const referrers = pgTable(
   "referrers",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+    /** Signed-in owner. Null for contact-level codes minted before the customer has an account. */
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    /** Contact the code was minted for (review-request recipients get a link without signing up). */
+    contactId: uuid("contact_id").references(() => contacts.id, { onDelete: "set null" }),
     campaignId: uuid("campaign_id")
       .notNull()
       .references(() => referralCampaigns.id, { onDelete: "cascade" }),
@@ -266,6 +267,7 @@ export const referrers = pgTable(
       table.userId,
       table.campaignId,
     ),
+    uniqueIndex("referrers_contact_campaign_unique").on(table.contactId, table.campaignId),
     index("referrers_qualified_idx").on(table.qualifiedAt),
   ],
 );
@@ -739,6 +741,10 @@ export const referrersRelations = relations(referrers, ({ one, many }) => ({
   user: one(users, {
     fields: [referrers.userId],
     references: [users.id],
+  }),
+  contact: one(contacts, {
+    fields: [referrers.contactId],
+    references: [contacts.id],
   }),
   campaign: one(referralCampaigns, {
     fields: [referrers.campaignId],

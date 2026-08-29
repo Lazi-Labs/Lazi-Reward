@@ -146,6 +146,7 @@ export async function claimGift(giftId: string, productId: string): Promise<Gift
       .returning();
     await emitRequestEvent(row.reviewRequestId, "gift.claimed", {
       giftId: row.id,
+      source: row.source,
       product: product.name,
       productId,
       amount: Number(row.amount),

@@ -6,9 +6,9 @@ import { redirect } from "next/navigation";
 
 import { BrandCard, BrandFrame, kitButton } from "@/components/brand/brand-frame";
 import { db } from "@/db";
-import { referralCampaigns, referralClicks, referrers, users } from "@/db/schema";
+import { referralCampaigns, referralClicks, referrers } from "@/db/schema";
 import { brandFor } from "@/lib/brand";
-import { friendOfferFor } from "@/lib/referrals";
+import { friendOfferFor, referrerIdentity } from "@/lib/referrals";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +28,9 @@ export default async function ReferralLandingPage({ params }: { params: Promise<
   const referrer = await db.query.referrers.findFirst({ where: eq(referrers.referralCode, code) });
   if (!referrer) redirect("/");
 
-  const [campaign, refUser] = await Promise.all([
+  const [campaign, who] = await Promise.all([
     db.query.referralCampaigns.findFirst({ where: eq(referralCampaigns.id, referrer.campaignId), with: { business: true } }),
-    db.query.users.findFirst({ where: eq(users.id, referrer.userId) }),
+    referrerIdentity(referrer.id),
   ]);
 
   const h = await headers();
@@ -49,7 +49,7 @@ export default async function ReferralLandingPage({ params }: { params: Promise<
   }
 
   const brand = brandFor(campaign?.business?.slug ?? null);
-  const first = refUser?.name?.split(" ")[0] ?? "A friend";
+  const first = who?.name?.split(" ")[0] ?? "A friend";
   const friendOffer = campaign ? friendOfferFor(campaign) : null;
   const reward = campaign ? dollars.format(Number(campaign.rewardAmount)) : null;
 
