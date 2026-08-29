@@ -1,4 +1,4 @@
-import { and, desc, eq, isNotNull } from "drizzle-orm";
+import { and, desc, eq, gte, ilike, isNotNull, like, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -8,6 +8,7 @@ import {
   reviewRequests,
   reviews,
   tasks,
+  reviewRequestStatuses,
   type CommChannel,
   type ReviewRequestStatus,
 } from "@/db/schema";
@@ -312,7 +313,31 @@ export type ReviewRequestRow = {
   } | null;
 };
 
-export async function listReviewRequests(limit = 100): Promise<ReviewRequestRow[]> {
+export type ReviewRequestFilters = {
+  since?: Date;
+  status?: string;
+  businessId?: string;
+  q?: string;
+  limit?: number;
+};
+
+export async function listReviewRequests(
+  filters: ReviewRequestFilters = {},
+): Promise<ReviewRequestRow[]> {
+  const limit = filters.limit ?? 100;
+  const statusOk = (reviewRequestStatuses as readonly string[]).includes(filters.status ?? "");
+  const where = and(
+    filters.since ? gte(reviewRequests.createdAt, filters.since) : undefined,
+    statusOk ? eq(reviewRequests.status, filters.status as ReviewRequestStatus) : undefined,
+    filters.businessId ? eq(reviewRequests.businessId, filters.businessId) : undefined,
+    filters.q
+      ? or(
+          ilike(contacts.name, `%${filters.q}%`),
+          ilike(contacts.phone, `%${filters.q}%`),
+          ilike(contacts.email, `%${filters.q}%`),
+        )
+      : undefined,
+  );
   const rows = await db
     .select({
       giftId: giftCards.id,
@@ -338,6 +363,7 @@ export async function listReviewRequests(limit = 100): Promise<ReviewRequestRow[
     .innerJoin(contacts, eq(reviewRequests.contactId, contacts.id))
     .innerJoin(businesses, eq(reviewRequests.businessId, businesses.id))
     .leftJoin(giftCards, eq(giftCards.reviewRequestId, reviewRequests.id))
+    .where(where)
     .orderBy(desc(reviewRequests.createdAt))
     .limit(limit);
   return rows.map(({ giftId, giftStatus, giftAmount, giftLink, giftReason, ...r }) => ({
@@ -391,3 +417,31 @@ export const REVIEW_REQUEST_STATUS_LABEL: Record<ReviewRequestStatus, string> = 
   submitted: "Responded",
   failed: "Failed",
 };
+
+/** Everything the admin detail page shows for one request. */
+export async function getReviewRequestDetail(id: string) {
+  const request = await db.query.reviewRequests.findFirst({
+    where: eq(reviewRequests.id, id),
+    with: { business: true, contact: true, giftCard: true },
+  });
+  if (!request) return null;
+  const [latestReview, callbacks] = await Promise.all([
+    db.query.reviews.findFirst({
+      where: and(
+        eq(reviews.contactId, request.contactId),
+        eq(reviews.source, "internal"),
+        gte(reviews.createdAt, request.createdAt),
+      ),
+      orderBy: desc(reviews.createdAt),
+    }),
+    db.query.tasks.findMany({
+      where: and(
+        eq(tasks.contactId, request.contactId),
+        like(tasks.title, "Manager callback%"),
+        gte(tasks.createdAt, request.createdAt),
+      ),
+      orderBy: desc(tasks.createdAt),
+    }),
+  ]);
+  return { request, gift: request.giftCard, latestReview: latestReview ?? null, callbacks };
+}

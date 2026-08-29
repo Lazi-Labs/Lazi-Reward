@@ -58,12 +58,12 @@ export function ReferHero({ link, rewardYou, friendOffer, brandName }: Props) {
   const generalError = state && !state.ok && "error" in state ? state.error : undefined;
 
   return (
-    <NavyCard className="px-8 py-9">
+    <NavyCard className="px-5 py-7 sm:px-8 sm:py-9">
       <span className="mb-2.5 inline-block font-display text-[13px] tracking-[1.5px] text-pce-teal">
         Refer a Friend
       </span>
-      <h1 className="mb-3 font-display text-[38px] text-pce-cream">{heroLine}</h1>
-      <p className="mb-6 text-[17px] leading-[1.6] text-white">{heroSub}</p>
+      <h1 className="mb-3 font-display text-[30px] text-pce-cream sm:text-[38px]">{heroLine}</h1>
+      <p className="mb-6 text-[16px] leading-[1.6] text-white sm:text-[17px]">{heroSub}</p>
 
       {state?.ok ? (
         <div className="mb-5 rounded-[14px] border border-white/20 bg-white/10 px-5 py-4 text-white">

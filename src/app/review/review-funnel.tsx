@@ -58,7 +58,7 @@ const money = new Intl.NumberFormat("en-US", {
 function GiftTeaser({ amount }: { amount: number }) {
   return (
     <div className="mx-auto mb-5 w-full max-w-[560px] rounded-[14px] border-2 border-dashed border-pce-red-deep bg-pce-cream px-5 py-4 text-center">
-      <p className="font-display text-[24px] leading-[1.1] text-pce-red-deep">
+      <p className="font-display text-[22px] leading-[1.1] text-pce-red-deep sm:text-[24px]">
         Get Rewarded — On Us, Instantly
       </p>
       <p className="mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
@@ -141,7 +141,7 @@ function GiftBanner({
                 disabled={pending || !armed}
                 onClick={() => choose(p)}
                 className={cn(
-                  "flex flex-col items-center gap-1.5 rounded-xl border border-pce-line border-b-[3px] bg-white px-2 py-3 text-[13px] font-bold text-pce-ink transition-colors hover:border-pce-coral hover:bg-pce-sky/40 disabled:opacity-60",
+                  "flex min-h-[72px] cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-pce-line border-b-[3px] bg-white px-2 py-3 text-[13px] font-bold text-pce-ink transition-colors hover:border-pce-coral hover:bg-pce-sky/40 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-pce-teal/50 disabled:opacity-60",
                   choosing === p.id && "border-pce-coral",
                 )}
               >
@@ -229,8 +229,8 @@ export function ReviewFunnel({
       <>
         {gift ? <GiftTeaser amount={gift.amount} /> : null}
         <BrandCard className="mx-auto max-w-[560px] px-5 text-center sm:px-9">
-          <h1 className="mb-2.5 font-display text-[40px] text-pce-navy">How Did We Do?</h1>
-          <p className="mb-7 text-lg leading-[1.55] text-pce-body">
+          <h1 className="mb-2.5 font-display text-[32px] text-pce-navy sm:text-[40px]">How Did We Do?</h1>
+          <p className="mb-6 text-[17px] leading-[1.55] text-pce-body sm:text-lg">
             {greeting} Tap a star to rate your recent {businessName} service visit.
           </p>
           <div className="flex flex-nowrap justify-center" onMouseLeave={() => setHover(0)}>
@@ -262,8 +262,8 @@ export function ReviewFunnel({
           <div className="mb-3.5 text-[44px] leading-none text-pce-cream">
             {"★".repeat(picked)}
           </div>
-          <h1 className="mb-3 font-display text-4xl text-pce-cream">You Just Made Our Day!</h1>
-          <p className="mb-6 text-lg leading-[1.6] text-white">
+          <h1 className="mb-3 font-display text-[30px] text-pce-cream sm:text-4xl">You Just Made Our Day!</h1>
+          <p className="mb-6 text-[17px] leading-[1.6] text-white sm:text-lg">
             Reviews are how neighbors find a crew they can trust. If you have a minute, would you
             share your experience on Google?
           </p>
@@ -285,7 +285,7 @@ export function ReviewFunnel({
       <>
         {banner}
         <BrandCard className="mx-auto max-w-[620px]">
-          <h1 className="mb-2.5 text-center font-display text-[32px] text-pce-navy">
+          <h1 className="mb-2.5 text-center font-display text-[28px] text-pce-navy sm:text-[32px]">
             Help Us Make It Right
           </h1>
           <p className="mb-7 text-center text-[17px] leading-[1.55] text-pce-body">
@@ -297,7 +297,7 @@ export function ReviewFunnel({
               key={q}
               className="flex items-center justify-between gap-4 border-b border-pce-sky py-3.5"
             >
-              <span className="text-[16.5px] font-medium text-pce-ink">{q}</span>
+              <span className="text-[15px] font-medium text-pce-ink sm:text-[16.5px]">{q}</span>
               <span className="flex flex-none gap-0.5">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <Star

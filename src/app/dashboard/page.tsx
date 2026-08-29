@@ -25,10 +25,10 @@ const dollarFmt = new Intl.NumberFormat("en-US", {
 
 function Stat({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <BrandCard className="px-6 py-6">
-      <p className="mb-1 text-xs font-bold uppercase tracking-[1.2px] text-pce-muted">{label}</p>
-      <p className="font-display text-[40px] text-pce-navy">{value}</p>
-      <p className="mt-1 text-sm text-pce-body">{note}</p>
+    <BrandCard className="px-3 py-4 sm:px-6 sm:py-6">
+      <p className="mb-1 text-[10px] font-bold uppercase tracking-[1.2px] text-pce-muted sm:text-xs">{label}</p>
+      <p className="font-display text-[34px] text-pce-navy sm:text-[40px]">{value}</p>
+      <p className="mt-1 hidden text-sm text-pce-body sm:block">{note}</p>
     </BrandCard>
   );
 }
@@ -49,7 +49,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="pce-wash min-h-screen">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-5 py-8">
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pb-[max(2rem,env(safe-area-inset-bottom))] pt-5 sm:gap-8 sm:px-5 sm:py-8">
         <header className="flex items-center justify-between">
           <Link href="/">
             <Image
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
               width={180}
               height={102}
               priority
-              className="h-auto w-[180px]"
+              className="h-auto w-[140px] sm:w-[180px]"
             />
           </Link>
           <div className="flex items-center gap-4">
@@ -82,7 +82,7 @@ export default async function DashboardPage() {
               brandName={brand.name}
             />
           </div>
-          <div className="grid gap-5 lg:col-span-2">
+          <div className="grid grid-cols-3 gap-3 lg:col-span-2 lg:grid-cols-1 lg:gap-5">
             <Stat
               label="Rewards earned"
               value={dollarFmt.format(stats.totalEarningsCents / 100)}
@@ -101,7 +101,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <BrandCard className="px-6 py-7">
+        <BrandCard className="px-4 py-6 sm:px-6 sm:py-7">
           <h2 className="font-display text-2xl text-pce-navy">Your Referrals</h2>
           <p className="mb-4 text-sm text-pce-body">
             Status updates as our team contacts and books each one.

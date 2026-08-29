@@ -1,4 +1,4 @@
-import { and, count, eq, gte, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -224,6 +224,69 @@ export async function getGiftForReviewRequest(requestId: string) {
 
 // ── Admin queries ────────────────────────────────────────────────────────────
 
+export type GiftListRow = {
+  id: string;
+  status: GiftCardStatus;
+  amount: string;
+  source: string;
+  productName: string | null;
+  redemptionLink: string | null;
+  failureReason: string | null;
+  deliveryChannel: string | null;
+  tremendousOrderId: string | null;
+  sentAt: Date | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+  contactName: string;
+  businessName: string;
+  reviewRequestId: string | null;
+};
+
+export async function listGiftCards(filters: {
+  since?: Date;
+  status?: string;
+  businessId?: string;
+  q?: string;
+  limit?: number;
+} = {}): Promise<GiftListRow[]> {
+  const statuses = ["offered", "created", "delivered", "failed", "canceled"];
+  const where = and(
+    filters.since ? gte(giftCards.createdAt, filters.since) : undefined,
+    filters.status && statuses.includes(filters.status)
+      ? eq(giftCards.status, filters.status as GiftCardStatus)
+      : undefined,
+    filters.businessId ? eq(giftCards.businessId, filters.businessId) : undefined,
+    filters.q
+      ? or(ilike(contacts.name, `%${filters.q}%`), ilike(contacts.phone, `%${filters.q}%`))
+      : undefined,
+  );
+  const rows = await db
+    .select({
+      id: giftCards.id,
+      status: giftCards.status,
+      amount: giftCards.amount,
+      source: giftCards.source,
+      productName: giftCards.productName,
+      redemptionLink: giftCards.redemptionLink,
+      failureReason: giftCards.failureReason,
+      deliveryChannel: giftCards.deliveryChannel,
+      tremendousOrderId: giftCards.tremendousOrderId,
+      sentAt: giftCards.sentAt,
+      deliveredAt: giftCards.deliveredAt,
+      createdAt: giftCards.createdAt,
+      contactName: contacts.name,
+      businessName: businesses.name,
+      reviewRequestId: giftCards.reviewRequestId,
+    })
+    .from(giftCards)
+    .innerJoin(contacts, eq(giftCards.contactId, contacts.id))
+    .innerJoin(businesses, eq(giftCards.businessId, businesses.id))
+    .where(where)
+    .orderBy(desc(giftCards.createdAt))
+    .limit(filters.limit ?? 100);
+  return rows.map((r) => ({ ...r, status: r.status as GiftCardStatus }));
+}
+
 export async function giftStats() {
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -306,4 +369,3 @@ export async function applyWebhookEvent(evt: TremendousWebhookEvent): Promise<st
   return `applied:${evt.event}`;
 }
 
-void businesses;
