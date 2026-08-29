@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,23 +25,60 @@ export function ReviewRequestForm({ businesses }: { businesses: Biz[] }) {
   );
 
   if (state?.ok) {
-    const sms = `sms:?&body=${encodeURIComponent(
-      `Hi ${state.name.split(" ")[0]}, thanks for choosing us! Could you take 60 seconds to tell us how we did? ${state.link}`,
-    )}`;
+    const sms = `sms:?&body=${encodeURIComponent(state.message)}`;
+    const giftOk = state.gift?.link;
     return (
       <div className="space-y-3 rounded-xl border border-pce-teal/40 bg-pce-sky/40 p-4 text-sm">
-        <p className="font-semibold text-pce-navy">Review link ready for {state.name}</p>
-        <code className="block break-all rounded-md bg-white px-3 py-2 font-mono text-xs">
-          {state.link}
-        </code>
+        <p className="font-semibold text-pce-navy">Ready for {state.name}</p>
+
+        {state.sent ? (
+          state.sent.ok ? (
+            <Badge>Sent by {state.sent.channel === "sms" ? "text" : "email"}</Badge>
+          ) : (
+            <p className="text-xs text-pce-red-deep">
+              Auto-send failed ({state.sent.error}) — send it manually below.
+            </p>
+          )
+        ) : null}
+
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Gift card
+          </p>
+          {giftOk ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="secondary">${state.gift!.amount} ready</Badge>
+              <code className="truncate font-mono text-xs text-muted-foreground">{state.gift!.link}</code>
+              <CopyButton value={state.gift!.link!} label="Copy gift link" />
+            </div>
+          ) : state.gift ? (
+            <p className="text-xs text-pce-red-deep">
+              Gift not issued ({state.gift.reason ?? state.gift.status}) — retry from the table
+              below once Tremendous is configured.
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">Gifts are disabled for this business.</p>
+          )}
+        </div>
+
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Message
+          </p>
+          <pre className="whitespace-pre-wrap rounded-md bg-white px-3 py-2 font-sans text-xs">
+            {state.message}
+          </pre>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          <CopyButton value={state.link} label="Copy link" variant="default" />
+          <CopyButton value={state.message} label="Copy message" variant="default" />
           <a
             href={sms}
             className="inline-flex h-8 items-center rounded-lg border border-border bg-background px-3 text-sm font-medium hover:bg-muted"
           >
             Text it
           </a>
+          <CopyButton value={state.link} label="Copy review link" />
           <Button type="button" size="sm" variant="ghost" onClick={() => window.location.reload()}>
             New request
           </Button>
@@ -110,8 +148,12 @@ export function ReviewRequestForm({ businesses }: { businesses: Biz[] }) {
       </div>
       {generalError && <p className="text-sm text-destructive">{generalError}</p>}
       <Button type="submit" disabled={pending}>
-        {pending ? "Creating…" : "Create review link"}
+        {pending ? "Creating…" : "Create request + gift"}
       </Button>
+      <p className="text-xs text-muted-foreground">
+        Mints the thank-you gift card and the review link together. The gift is never conditioned
+        on the review.
+      </p>
     </form>
   );
 }

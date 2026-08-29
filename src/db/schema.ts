@@ -83,6 +83,15 @@ export const reviewRequestStatuses = [
 ] as const;
 export type ReviewRequestStatus = (typeof reviewRequestStatuses)[number];
 
+export const giftCardSources = ["review_request", "manual", "referral"] as const;
+export type GiftCardSource = (typeof giftCardSources)[number];
+
+export const giftCardStatuses = ["created", "delivered", "failed", "canceled"] as const;
+export type GiftCardStatus = (typeof giftCardStatuses)[number];
+
+export const giftDeliveryChannels = ["sms", "email", "manual"] as const;
+export type GiftDeliveryChannel = (typeof giftDeliveryChannels)[number];
+
 // ── Users (shadow table — Clerk owns identity) ───────────────────────────────
 
 export const users = pgTable(
@@ -118,6 +127,12 @@ export const businesses = pgTable(
     gmbUrl: text("gmb_url"),
     reviewTemplate: text("review_template"),
     avatar: text("avatar"),
+    // Unconditional thank-you gift sent with every review request (not tied to
+    // the review — see design/README.md, "reward the job, not the review").
+    giftAmount: numeric("gift_amount", { precision: 10, scale: 2 })
+      .notNull()
+      .default("10.00"),
+    tremendousCampaignId: text("tremendous_campaign_id"),
     isActive: boolean("is_active").notNull().default(true),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -612,6 +627,50 @@ export const reviewRequests = pgTable(
   ],
 );
 
+// ── Gift cards (Tremendous fulfilment ledger) ───────────────────────────────
+
+export const giftCards = pgTable(
+  "gift_cards",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    businessId: uuid("business_id")
+      .notNull()
+      .references(() => businesses.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contacts.id, { onDelete: "cascade" }),
+    reviewRequestId: uuid("review_request_id")
+      .unique()
+      .references(() => reviewRequests.id, { onDelete: "set null" }),
+    source: text("source").$type<GiftCardSource>().notNull(),
+    amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+    currencyCode: varchar("currency_code", { length: 3 }).notNull().default("USD"),
+    status: text("status").$type<GiftCardStatus>().notNull().default("created"),
+    /** Idempotency key sent to Tremendous as external_id. */
+    externalId: text("external_id").notNull().unique(),
+    tremendousOrderId: text("tremendous_order_id"),
+    tremendousRewardId: text("tremendous_reward_id"),
+    redemptionLink: text("redemption_link"),
+    campaignId: text("campaign_id"),
+    deliveryChannel: text("delivery_channel").$type<GiftDeliveryChannel>(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    failureReason: text("failure_reason"),
+    lastWebhookUuid: text("last_webhook_uuid"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("gift_cards_contact_idx").on(table.contactId),
+    index("gift_cards_status_idx").on(table.status),
+    index("gift_cards_reward_idx").on(table.tremendousRewardId),
+  ],
+);
+
 // ── Relations ────────────────────────────────────────────────────────────────
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -629,6 +688,7 @@ export const businessesRelations = relations(businesses, ({ many }) => ({
   submissions: many(submissions),
   reviewRequests: many(reviewRequests),
   photos: many(photos),
+  giftCards: many(giftCards),
 }));
 
 export const contactsRelations = relations(contacts, ({ one, many }) => ({
@@ -815,6 +875,25 @@ export const reviewRequestsRelations = relations(reviewRequests, ({ one }) => ({
   submission: one(submissions, {
     fields: [reviewRequests.submissionId],
     references: [submissions.id],
+  }),
+  giftCard: one(giftCards, {
+    fields: [reviewRequests.id],
+    references: [giftCards.reviewRequestId],
+  }),
+}));
+
+export const giftCardsRelations = relations(giftCards, ({ one }) => ({
+  business: one(businesses, {
+    fields: [giftCards.businessId],
+    references: [businesses.id],
+  }),
+  contact: one(contacts, {
+    fields: [giftCards.contactId],
+    references: [contacts.id],
+  }),
+  reviewRequest: one(reviewRequests, {
+    fields: [giftCards.reviewRequestId],
+    references: [reviewRequests.id],
   }),
 }));
 

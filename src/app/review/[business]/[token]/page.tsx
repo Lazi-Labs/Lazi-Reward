@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { BrandFrame } from "@/components/brand/brand-frame";
 import { brandFor } from "@/lib/brand";
+import { getGiftForReviewRequest } from "@/lib/gifts";
 import {
   getReviewRequestByToken,
   googleReviewUrlFor,
@@ -26,7 +27,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 
 /**
  * Tokenized review link — what a customer receives in their review request
- * text/email. Knows who they are, so the outcome lands on their contact.
+ * text/email. Knows who they are, so the outcome lands on their contact and
+ * their thank-you gift (if issued) is shown.
  */
 export default async function TokenReviewPage({ params }: { params: Params }) {
   const { business, token } = await params;
@@ -36,11 +38,12 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
     redirect(`/review/${req.business.slug}/${token}`);
   }
 
-  try {
-    await markReviewRequestClicked(req.id);
-  } catch (err) {
-    console.error("Failed to mark review request clicked", err);
-  }
+  const [gift] = await Promise.all([
+    getGiftForReviewRequest(req.id),
+    markReviewRequestClicked(req.id).catch((err) =>
+      console.error("Failed to mark review request clicked", err),
+    ),
+  ]);
 
   const brand = brandFor(req.business.slug);
   const firstName = req.contact.name?.split(" ")[0] ?? null;
@@ -53,6 +56,11 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
         token={token}
         googleUrl={googleReviewUrlFor(req.business)}
         contactFirstName={firstName}
+        gift={
+          gift?.redemptionLink && gift.status !== "canceled"
+            ? { link: gift.redemptionLink, amount: Number(gift.amount) }
+            : null
+        }
       />
     </BrandFrame>
   );

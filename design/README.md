@@ -34,3 +34,14 @@ sits next to the source templates. See `design/cards/` for those files.
 Tokens are duplicated on purpose (CSS vars here, `styles.css` there). If a
 color changes in the design project, update the `:root` block in
 `src/app/globals.css` to match — the variable names are identical.
+
+## Compliance rule for the review funnel (decided 2026-08-28)
+
+**Reward the job, not the review.** Every review request carries an unconditional $10
+Tremendous gift (`businesses.gift_amount`); it is minted when the request is created and shown
+on every funnel step. Google's UGC policy bans incentives for reviews and the FTC rule
+(16 CFR 465.4) bans incentives conditioned on sentiment, so:
+
+- never gate the gift on rating or on posting a review;
+- copy must not say "leave a review and get…" — see `src/lib/messages.ts`;
+- no screenshot/verification step ties money to a review.

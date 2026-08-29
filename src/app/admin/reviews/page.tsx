@@ -26,7 +26,12 @@ import {
   reviewLinkFor,
 } from "@/lib/reviews";
 
+import { isTremendousConfigured, isTremendousSandbox } from "@/lib/tremendous";
+import { isSmsConfigured } from "@/lib/notify";
+
 import { CopyButton } from "./copy-button";
+import { GiftCell } from "./gift-cell";
+import { MarkSentButton } from "./mark-sent";
 import { ReviewRequestForm } from "./request-form";
 
 const STATUS_TONE: Record<string, "default" | "secondary" | "destructive"> = {
@@ -65,9 +70,23 @@ export default async function AdminReviewsPage() {
       <div>
         <h1 className="text-2xl font-bold">Reviews</h1>
         <p className="text-sm text-muted-foreground">
-          Review hosting links, per-customer review requests, and the feedback that comes back.
+          Review hosting links, per-customer review requests with their thank-you gift, and the
+          feedback that comes back.
         </p>
       </div>
+
+      {!isTremendousConfigured() ? (
+        <div className="rounded-lg border border-pce-red-deep/30 bg-pce-cream/40 px-4 py-3 text-sm">
+          <span className="font-semibold text-pce-red-deep">Tremendous is not configured</span> —
+          review requests are created without a gift card. Set <code>TREMENDOUS_API_KEY</code>
+          (+ <code>businesses.tremendous_campaign_id</code>) and use Retry on the failed rows.
+        </div>
+      ) : isTremendousSandbox() ? (
+        <div className="rounded-lg border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">
+          Tremendous <strong>sandbox</strong> — gift links are test rewards, nothing is funded.
+          {isSmsConfigured() ? " Twilio auto-send is on." : " Twilio not set: use \"Text it\"."}
+        </div>
+      ) : null}
 
       <section className="grid gap-6 lg:grid-cols-5">
         <Card className="lg:col-span-3">
@@ -155,6 +174,7 @@ export default async function AdminReviewsPage() {
                 <TableHead>Status</TableHead>
                 <TableHead className="hidden sm:table-cell">Created</TableHead>
                 <TableHead className="hidden lg:table-cell">Opened</TableHead>
+                <TableHead className="text-right">Gift</TableHead>
                 <TableHead className="text-right">Link</TableHead>
               </TableRow>
             </TableHeader>
@@ -180,7 +200,15 @@ export default async function AdminReviewsPage() {
                     {fmt(r.clickedAt)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <CopyButton value={`${base}/review/${r.businessSlug}/${r.token}`} />
+                    <GiftCell gift={r.gift} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <span className="inline-flex flex-wrap justify-end gap-1.5">
+                      <CopyButton value={`${base}/review/${r.businessSlug}/${r.token}`} />
+                      {r.status === "queued" ? (
+                        <MarkSentButton requestId={r.id} giftId={r.gift?.id ?? null} />
+                      ) : null}
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}

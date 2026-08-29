@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getContactDetail } from "@/lib/admin";
 import { REFERRAL_STATUSES_FOR_DISPLAY } from "@/lib/referrals";
 
-import { addContactNoteAction } from "./actions";
+import { addContactNoteAction, sendThankYouGiftAction } from "./actions";
 
 const fmt = new Intl.DateTimeFormat("en-US", {
   dateStyle: "medium",
@@ -70,6 +70,12 @@ export default async function AdminContactDetailPage({
                 <p className="whitespace-pre-wrap">{contact.notes}</p>
               </div>
             ) : null}
+            <form action={sendThankYouGiftAction} className="mt-2">
+              <input type="hidden" name="contactId" value={contact.id} />
+              <Button type="submit" size="sm" variant="outline">
+                Send ${Number(contact.business?.giftAmount ?? 10).toFixed(0)} thank-you gift
+              </Button>
+            </form>
           </CardContent>
         </Card>
 

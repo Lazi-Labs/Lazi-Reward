@@ -4,9 +4,9 @@ import { db } from "@/db";
 import {
   businesses,
   contacts,
+  giftCards,
   reviewRequests,
   reviews,
-  submissions,
   tasks,
   type CommChannel,
   type ReviewRequestStatus,
@@ -187,43 +187,6 @@ export async function recordRating(args: {
   return review;
 }
 
-/** Happy path: customer chose a gift and was handed to Google. */
-export async function recordGiftChoice(args: {
-  businessId: string;
-  requestId: string | null;
-  contact: { id: string; name: string; email: string | null; phone: string | null } | null;
-  reviewId: string;
-  payoutId: string;
-}) {
-  if (!args.contact) return null; // anonymous /review/<slug> visit — nothing to fulfil
-  const [sub] = await db
-    .insert(submissions)
-    .values({
-      businessId: args.businessId,
-      contactId: args.contact.id,
-      reviewId: args.reviewId,
-      token: generateToken(16),
-      name: args.contact.name,
-      email: args.contact.email ?? "",
-      phone: args.contact.phone,
-      status: "waiting_for_screenshot",
-      rewardDeliveryMethod: args.payoutId,
-    })
-    .returning();
-  if (args.requestId) {
-    await db
-      .update(reviewRequests)
-      .set({
-        submissionId: sub.id,
-        status: "submitted",
-        submittedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(reviewRequests.id, args.requestId));
-  }
-  return sub;
-}
-
 /** Low-score path: questionnaire + optional manager callback task. */
 export async function recordFeedback(args: {
   businessId: string;
@@ -285,11 +248,23 @@ export type ReviewRequestRow = {
   contactPhone: string | null;
   businessName: string;
   businessSlug: string;
+  gift: {
+    id: string;
+    status: string;
+    amount: string;
+    redemptionLink: string | null;
+    failureReason: string | null;
+  } | null;
 };
 
 export async function listReviewRequests(limit = 100): Promise<ReviewRequestRow[]> {
   const rows = await db
     .select({
+      giftId: giftCards.id,
+      giftStatus: giftCards.status,
+      giftAmount: giftCards.amount,
+      giftLink: giftCards.redemptionLink,
+      giftReason: giftCards.failureReason,
       id: reviewRequests.id,
       token: reviewRequests.token,
       status: reviewRequests.status,
@@ -307,12 +282,22 @@ export async function listReviewRequests(limit = 100): Promise<ReviewRequestRow[
     .from(reviewRequests)
     .innerJoin(contacts, eq(reviewRequests.contactId, contacts.id))
     .innerJoin(businesses, eq(reviewRequests.businessId, businesses.id))
+    .leftJoin(giftCards, eq(giftCards.reviewRequestId, reviewRequests.id))
     .orderBy(desc(reviewRequests.createdAt))
     .limit(limit);
-  return rows.map((r) => ({
+  return rows.map(({ giftId, giftStatus, giftAmount, giftLink, giftReason, ...r }) => ({
     ...r,
     status: r.status as ReviewRequestStatus,
     channel: r.channel as CommChannel,
+    gift: giftId
+      ? {
+          id: giftId,
+          status: giftStatus ?? "created",
+          amount: giftAmount ?? "0",
+          redemptionLink: giftLink,
+          failureReason: giftReason,
+        }
+      : null,
   }));
 }
 

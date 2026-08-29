@@ -38,6 +38,7 @@ export default async function BusinessReviewPage({ params }: { params: Params })
         token={null}
         googleUrl={googleReviewUrlFor(biz)}
         contactFirstName={null}
+        gift={null}
       />
     </BrandFrame>
   );

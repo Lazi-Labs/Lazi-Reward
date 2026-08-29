@@ -98,4 +98,3 @@ export const FEEDBACK_QUESTIONS = [
 
 /** Ratings at or above this go to the Google step; below go to feedback. */
 export const REVIEW_GATE = 4;
-export const REVIEW_GIFT_AMOUNT = "$25";

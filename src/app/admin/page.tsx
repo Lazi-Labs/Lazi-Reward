@@ -6,9 +6,17 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getAdminStats } from "@/lib/admin";
+import { giftStats } from "@/lib/gifts";
+import { getBalance, isTremendousConfigured, isTremendousSandbox } from "@/lib/tremendous";
+
+const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
 
 export default async function AdminOverviewPage() {
-  const stats = await getAdminStats();
+  const [stats, gifts, balance] = await Promise.all([
+    getAdminStats(),
+    giftStats(),
+    isTremendousConfigured() ? getBalance() : Promise.resolve(null),
+  ]);
 
   return (
     <>
@@ -46,6 +54,39 @@ export default async function AdminOverviewPage() {
           </CardHeader>
           <CardContent className="text-sm text-muted-foreground">
             Total people in the CRM.
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Gift cards this month</CardDescription>
+            <CardTitle className="text-3xl">
+              {gifts.monthCount}{" "}
+              <span className="text-base font-normal text-muted-foreground">
+                · {money.format(gifts.monthTotal)}
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {gifts.failedCount > 0 ? (
+              <span className="text-pce-red-deep">{gifts.failedCount} failed — see Reviews.</span>
+            ) : (
+              "Unconditional thank-yous sent with review requests."
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>
+              Tremendous balance{isTremendousSandbox() ? " (sandbox)" : ""}
+            </CardDescription>
+            <CardTitle className="text-3xl">
+              {balance === null ? "—" : money.format(balance)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            {isTremendousConfigured()
+              ? "Available funds for gift cards."
+              : "Not configured — set TREMENDOUS_API_KEY."}
           </CardContent>
         </Card>
       </section>

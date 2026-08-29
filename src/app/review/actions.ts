@@ -2,12 +2,11 @@
 
 import { z } from "zod";
 
-import { FEEDBACK_QUESTIONS, PAYOUT_IDS } from "@/lib/brand";
+import { FEEDBACK_QUESTIONS } from "@/lib/brand";
 import {
   getBusinessBySlug,
   getReviewRequestByToken,
   recordFeedback,
-  recordGiftChoice,
   recordRating,
 } from "@/lib/reviews";
 
@@ -46,33 +45,6 @@ export async function rateAction(input: z.infer<typeof ratingSchema>) {
     sentToGoogle: data.sentToGoogle,
   });
   return { reviewId: review.id };
-}
-
-const giftSchema = z.object({
-  businessSlug: z.string().min(1),
-  token: z.string().nullable(),
-  reviewId: z.string().uuid(),
-  payoutId: z.enum(PAYOUT_IDS),
-});
-
-export async function chooseGiftAction(input: z.infer<typeof giftSchema>) {
-  const data = giftSchema.parse(input);
-  const ctx = await resolveContext(data.businessSlug, data.token);
-  await recordGiftChoice({
-    businessId: ctx.businessId,
-    requestId: ctx.requestId,
-    contact: ctx.contact
-      ? {
-          id: ctx.contact.id,
-          name: ctx.contact.name,
-          email: ctx.contact.email,
-          phone: ctx.contact.phone,
-        }
-      : null,
-    reviewId: data.reviewId,
-    payoutId: data.payoutId,
-  });
-  return { ok: true as const };
 }
 
 const feedbackSchema = z.object({

@@ -10,6 +10,7 @@ const seedBusinesses = [
     reviewTemplate:
       "We had a great experience with LIV Pools — friendly, on-time, and great quality work.",
     avatar: null,
+    giftAmount: "10.00",
     isActive: true,
     sortOrder: 1,
   },
@@ -20,6 +21,7 @@ const seedBusinesses = [
     reviewTemplate:
       "Perfect Catch Electric did fantastic work — clean, professional, and reasonably priced.",
     avatar: null,
+    giftAmount: "10.00",
     isActive: true,
     sortOrder: 2,
   },

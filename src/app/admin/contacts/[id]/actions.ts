@@ -6,6 +6,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { communicationLogs } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
+import { issueManualGift } from "@/lib/gifts";
 
 const noteSchema = z.object({
   contactId: z.string().uuid(),
@@ -33,4 +34,13 @@ export async function addContactNoteAction(formData: FormData) {
 
   revalidatePath(`/admin/contacts/${parsed.data.contactId}`);
   return { ok: true } as const;
+}
+
+export async function sendThankYouGiftAction(formData: FormData): Promise<void> {
+  await requireAdmin();
+  const contactId = String(formData.get("contactId") ?? "");
+  if (!contactId) return;
+  await issueManualGift({ contactId });
+  revalidatePath(`/admin/contacts/${contactId}`);
+  revalidatePath("/admin");
 }

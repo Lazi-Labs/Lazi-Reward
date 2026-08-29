@@ -8,6 +8,13 @@
       "when": 1777089986840,
       "tag": "0000_worthless_mattie_franklin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787970337685,
+      "tag": "0001_nostalgic_sphinx",
+      "breakpoints": true
     }
   ]
 }

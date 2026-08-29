@@ -8,6 +8,10 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { businesses, commChannels } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
+import { brandFor } from "@/lib/brand";
+import { issueGiftForReviewRequest, markGiftSent, retryGift } from "@/lib/gifts";
+import { buildReviewRequestEmail, buildReviewRequestMessage } from "@/lib/messages";
+import { isEmailConfigured, isSmsConfigured, sendEmail, sendSms } from "@/lib/notify";
 import {
   createReviewRequest,
   markReviewRequestSent,
@@ -28,7 +32,14 @@ const schema = z
   });
 
 export type CreateReviewRequestResult =
-  | { ok: true; link: string; token: string; name: string }
+  | {
+      ok: true;
+      name: string;
+      link: string;
+      message: string;
+      gift: { status: string; link: string | null; amount: number; reason: string | null } | null;
+      sent: { channel: "sms" | "email"; ok: boolean; error?: string } | null;
+    }
   | { ok: false; fieldErrors: Record<string, string[]> }
   | { ok: false; error: string };
 
@@ -65,17 +76,71 @@ export async function createReviewRequestAction(
       phone: parsed.data.phone || undefined,
       channel: parsed.data.channel,
     });
+
+    // The thank-you gift is unconditional — mint it with the request.
+    const gift = await issueGiftForReviewRequest(req.id);
+    const giftLink = gift?.status === "created" || gift?.status === "delivered" ? gift.redemptionLink : null;
+
     const link = await reviewLinkFor(biz.slug, req.token);
+    const brand = brandFor(biz.slug);
+    const msgArgs = {
+      brand,
+      firstName: parsed.data.name.split(" ")[0] ?? null,
+      reviewLink: link,
+      giftLink,
+      giftAmount: gift ? Number(gift.amount) : null,
+    };
+    const message = buildReviewRequestMessage(msgArgs);
+
+    // Auto-send when the channel's provider is configured; otherwise staff
+    // use the prefilled "Text it" button and mark it sent.
+    let sent: { channel: "sms" | "email"; ok: boolean; error?: string } | null = null;
+    if (parsed.data.channel === "sms" && parsed.data.phone && isSmsConfigured()) {
+      const r = await sendSms(parsed.data.phone, message);
+      sent = { channel: "sms", ok: r.ok, error: r.ok ? undefined : r.error };
+      if (r.ok) {
+        await markReviewRequestSent(req.id);
+        if (gift) await markGiftSent(gift.id, "sms");
+      }
+    } else if (parsed.data.channel === "email" && parsed.data.email && isEmailConfigured()) {
+      const em = buildReviewRequestEmail(msgArgs);
+      const r = await sendEmail({ to: parsed.data.email, ...em });
+      sent = { channel: "email", ok: r.ok, error: r.ok ? undefined : r.error };
+      if (r.ok) {
+        await markReviewRequestSent(req.id);
+        if (gift) await markGiftSent(gift.id, "email");
+      }
+    }
+
     revalidatePath("/admin/reviews");
-    return { ok: true, link, token: req.token, name: parsed.data.name };
+    revalidatePath("/admin");
+    return {
+      ok: true,
+      name: parsed.data.name,
+      link,
+      message,
+      gift: gift
+        ? { status: gift.status, link: giftLink, amount: Number(gift.amount), reason: gift.failureReason }
+        : null,
+      sent,
+    };
   } catch (err) {
     console.error("createReviewRequestAction failed", err);
     return { ok: false, error: "Could not create the review link. Try again." };
   }
 }
 
-export async function markSentAction(id: string) {
+export async function markSentAction(id: string, giftId?: string | null) {
   await requireAdmin();
   await markReviewRequestSent(id);
+  if (giftId) await markGiftSent(giftId, "manual");
   revalidatePath("/admin/reviews");
+}
+
+export async function retryGiftAction(giftId: string) {
+  await requireAdmin();
+  const row = await retryGift(giftId);
+  revalidatePath("/admin/reviews");
+  revalidatePath("/admin");
+  return { ok: row?.status === "created", reason: row?.failureReason ?? null };
 }
