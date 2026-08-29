@@ -52,9 +52,28 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 /**
- * Shown on every step when a gift exists. The gift is a thank-you for the
- * job — copy must never tie it to rating or reviewing (design/README.md).
- * The customer picks a card here; that click creates the Tremendous order.
+ * Rate screen only: tease the gift; the picker unlocks after any rating
+ * (1–5). Never conditioned on sentiment or on a Google review.
+ */
+function GiftTeaser({ amount }: { amount: number }) {
+  return (
+    <div className="mx-auto mb-5 w-full max-w-[560px] rounded-[14px] border-2 border-dashed border-pce-red-deep bg-pce-cream px-5 py-4 text-center">
+      <p className="font-display text-[24px] leading-[1.1] text-pce-red-deep">
+        Get Rewarded — On Us, Instantly
+      </p>
+      <p className="mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
+        Rate your visit below and pick a {money.format(amount)} gift card — Venmo, Amazon, Visa
+        and more. Every rating counts.
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Shown after the customer has rated (any stars). The gift is a thank-you
+ * for the job — copy must never tie it to the rating given or to reviewing
+ * (design/README.md). The customer picks a card here; that click creates the
+ * Tremendous order.
  */
 function GiftBanner({
   gift,
@@ -105,7 +124,7 @@ function GiftBanner({
       ) : (
         <>
           <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
-            Thanks for choosing us. Tap the gift card you&rsquo;d like — it&rsquo;s yours either way.
+            Thanks for rating us! Tap the gift card you&rsquo;d like — it&rsquo;s yours.
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {gift.products.map((p) => (
@@ -201,7 +220,7 @@ export function ReviewFunnel({
   if (step === "rate") {
     return (
       <>
-        {banner}
+        {gift ? <GiftTeaser amount={gift.amount} /> : null}
         <BrandCard className="mx-auto max-w-[560px] text-center">
           <h1 className="mb-2.5 font-display text-[40px] text-pce-navy">How Did We Do?</h1>
           <p className="mb-7 text-lg leading-[1.55] text-pce-body">
