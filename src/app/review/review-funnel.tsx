@@ -106,7 +106,8 @@ function GiftBanner({
       if (res.ok) {
         setLink(res.link);
         setProductName(res.productName);
-        window.location.assign(res.link);
+        // Open in a new tab so this page (and the Google ask) stays put.
+        window.open(res.link, "_blank", "noopener");
       } else {
         setErr(res.error);
         setChoosing(null);
@@ -122,7 +123,8 @@ function GiftBanner({
       {link ? (
         <>
           <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
-            Your {productName ?? "gift"} is ready — it&rsquo;s yours either way.
+            Your {productName ?? "gift"} card is ready — it opened in a new tab, and the button
+            below works any time.
           </p>
           <a href={link} target="_blank" rel="noopener" className={cn(kitButton.primary, "text-base")}>
             Open Your Gift →
@@ -257,8 +259,7 @@ export function ReviewFunnel({
   if (step === "share") {
     return (
       <>
-        {banner}
-        <NavyCard className="mx-auto max-w-[560px] text-center">
+        <NavyCard className="mx-auto mb-5 max-w-[560px] text-center">
           <div className="mb-3.5 text-[44px] leading-none text-pce-cream">
             {"★".repeat(picked)}
           </div>
@@ -273,9 +274,11 @@ export function ReviewFunnel({
             </a>
           ) : null}
           <p className="mt-4 text-[13.5px] leading-[1.6] text-pce-sky-deep">
-            Takes about 60 seconds. Honest feedback — good or bad — is what helps us most.
+            Takes about 60 seconds and opens in a new tab. Honest feedback — good or bad — is
+            what helps us most.
           </p>
         </NavyCard>
+        {banner}
       </>
     );
   }
