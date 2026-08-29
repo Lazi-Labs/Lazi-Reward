@@ -182,8 +182,41 @@ export function ReviewFunnel({
   const [phone, setPhone] = useState("");
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [wentToGoogle, setWentToGoogle] = useState(false);
 
   const ctx = { businessSlug, token };
+  const storageKey = token ? `pce-review-${token}` : null;
+
+  // If they tapped Share on Google earlier and reopened the link, put them
+  // straight back on the "welcome back, pick your gift" screen.
+  useEffect(() => {
+    if (!storageKey) return;
+    const t = setTimeout(() => {
+      try {
+        const saved = localStorage.getItem(storageKey);
+        if (!saved) return;
+        const { rating, google } = JSON.parse(saved) as { rating: number; google: boolean };
+        if (rating >= REVIEW_GATE) {
+          setPicked(rating);
+          setStep("share");
+          setWentToGoogle(Boolean(google));
+        }
+      } catch {
+        // ignore
+      }
+    }, 0);
+    return () => clearTimeout(t);
+  }, [storageKey]);
+
+  function remember(patch: { rating?: number; google?: boolean }) {
+    if (!storageKey) return;
+    try {
+      const prev = JSON.parse(localStorage.getItem(storageKey) ?? "{}");
+      localStorage.setItem(storageKey, JSON.stringify({ ...prev, ...patch }));
+    } catch {
+      // ignore
+    }
+  }
 
   function pick(n: number) {
     setPicked(n);
@@ -196,6 +229,7 @@ export function ReviewFunnel({
         console.error(err);
       }
       setHover(0);
+      remember({ rating: n });
       setStep(sentToGoogle ? "share" : "feedback");
     });
   }
@@ -263,22 +297,48 @@ export function ReviewFunnel({
           <div className="mb-3.5 text-[44px] leading-none text-pce-cream">
             {"★".repeat(picked)}
           </div>
-          <h1 className="mb-3 font-display text-[30px] text-pce-cream sm:text-4xl">You Just Made Our Day!</h1>
+          <h1 className="mb-3 font-display text-[30px] text-pce-cream sm:text-4xl">
+            {wentToGoogle ? "Thank You!" : "You Just Made Our Day!"}
+          </h1>
           <p className="mb-6 text-[17px] leading-[1.6] text-white sm:text-lg">
-            Reviews are how neighbors find a crew they can trust. If you have a minute, would you
-            share your experience on Google?
+            {wentToGoogle
+              ? "We appreciate you taking the time. Your thank-you gift is ready below."
+              : "Reviews are how neighbors find a crew they can trust. If you have a minute, would you share your experience on Google?"}
           </p>
           {googleUrl ? (
-            <a href={googleUrl} target="_blank" rel="noopener" className={kitButton.primary}>
-              Share on Google →
+            <a
+              href={googleUrl}
+              target="_blank"
+              rel="noopener"
+              onClick={() => {
+                setWentToGoogle(true);
+                remember({ google: true });
+              }}
+              className={cn(kitButton.primary, wentToGoogle && "opacity-90")}
+            >
+              {wentToGoogle ? "Open Google Again →" : "Share on Google →"}
             </a>
           ) : null}
           <p className="mt-4 text-[13.5px] leading-[1.6] text-pce-sky-deep">
-            Takes about 60 seconds and opens in a new tab. Honest feedback — good or bad — is
-            what helps us most.
+            {wentToGoogle
+              ? "Opened in a new tab — come back here any time."
+              : "Takes about 60 seconds and opens in a new tab. Honest feedback — good or bad — is what helps us most."}
           </p>
         </NavyCard>
-        {banner}
+        {gift ? (
+          wentToGoogle || !googleUrl ? (
+            banner
+          ) : (
+            <div className="mx-auto w-full max-w-[560px] rounded-[14px] border-2 border-dashed border-pce-red-deep/60 bg-pce-cream/70 px-5 py-4 text-center">
+              <p className="font-display text-[20px] leading-[1.1] text-pce-red-deep/80">
+                Your {money.format(gift.amount)} Thank-You Is Waiting
+              </p>
+              <p className="mt-1 text-[14px] leading-[1.5] text-pce-brown">
+                Tap <strong>Share on Google</strong> above, then come back to this page to pick your gift card.
+              </p>
+            </div>
+          )
+        ) : null}
       </>
     );
   }
@@ -286,7 +346,13 @@ export function ReviewFunnel({
   if (step === "feedback") {
     return (
       <>
-        {banner}
+        {gift ? (
+          <div className="mx-auto mb-5 w-full max-w-[620px] rounded-[14px] border-2 border-dashed border-pce-red-deep/60 bg-pce-cream/70 px-5 py-3 text-center">
+            <p className="text-[14px] leading-[1.5] text-pce-brown">
+              Your <strong>{money.format(gift.amount)} thank-you</strong> is waiting — send your feedback below and pick your gift card.
+            </p>
+          </div>
+        ) : null}
         <BrandCard className="mx-auto max-w-[620px]">
           <h1 className="mb-2.5 text-center font-display text-[28px] text-pce-navy sm:text-[32px]">
             Help Us Make It Right
