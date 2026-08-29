@@ -1,9 +1,9 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { db } from "@/db";
-import { contacts, referrals, referrers, users } from "@/db/schema";
+import { users } from "@/db/schema";
 
 const REFERRAL_COOKIE = "lazi_ref";
 
@@ -25,7 +25,10 @@ export async function ensureCurrentUser() {
   const existing = await db.query.users.findFirst({
     where: eq(users.clerkUserId, clerkUserId),
   });
-  if (existing) return existing;
+  if (existing) {
+    await tryAttributeReferral(existing.id);
+    return existing;
+  }
 
   const clerkUser = await currentUser();
   const email =
@@ -33,79 +36,51 @@ export async function ensureCurrentUser() {
     clerkUser?.emailAddresses[0]?.emailAddress ??
     `${clerkUserId}@no-email.local`;
   const name =
-    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") ||
-    null;
+    [clerkUser?.firstName, clerkUser?.lastName].filter(Boolean).join(" ") || null;
   const phone = clerkUser?.primaryPhoneNumber?.phoneNumber ?? null;
 
+  // Race-safe: two first requests can both miss the SELECT above.
   const [created] = await db
     .insert(users)
-    .values({
-      clerkUserId,
-      email,
-      name,
-      phone,
-      role: "customer",
+    .values({ clerkUserId, email, name, phone, role: "customer" })
+    .onConflictDoUpdate({
+      target: users.clerkUserId,
+      set: { email, name: sql`COALESCE(${users.name}, ${name})`, phone: sql`COALESCE(${users.phone}, ${phone})`, updatedAt: new Date() },
     })
     .returning();
 
-  // Best-effort referral attribution: if the visitor arrived via /r/{code}
-  // we dropped a cookie. Attach the new user to that referrer's open
-  // referral, if one exists.
   await tryAttributeReferral(created.id);
-
   return created;
 }
 
-async function tryAttributeReferral(newLocalUserId: string) {
+/**
+ * If the visitor arrived via /r/<code> we dropped a cookie. Attribute this
+ * user to that referrer (new OR existing user), then forget the cookie.
+ * Cookie writes are only legal in actions/route handlers, so the clear
+ * happens by expiring it via the /api/ref/clear beacon the dashboard fires.
+ */
+async function tryAttributeReferral(localUserId: string) {
   const cookieStore = await cookies();
   const code = cookieStore.get(REFERRAL_COOKIE)?.value;
   if (!code) return;
-
-  const referrer = await db.query.referrers.findFirst({
-    where: eq(referrers.referralCode, code),
-  });
-  if (!referrer) return;
-
-  // Best-effort: write a Contact for this user if we know their email,
-  // then create the referral row. Contact creation needs a business; we
-  // pull it from the campaign.
-  const campaign = await db.query.referralCampaigns.findFirst({
-    where: (c, { eq: e }) => e(c.id, referrer.campaignId),
-  });
-  if (!campaign?.businessId) return;
-
-  const newUser = await db.query.users.findFirst({
-    where: eq(users.id, newLocalUserId),
-  });
-  if (!newUser) return;
-
-  // Upsert a contact for this referred user.
-  const [contact] = await db
-    .insert(contacts)
-    .values({
-      businessId: campaign.businessId,
-      linkedUserId: newUser.id,
-      name: newUser.name ?? newUser.email,
-      email: newUser.email,
-      phone: newUser.phone,
-      source: "referral",
-    })
-    .onConflictDoNothing()
-    .returning();
-
-  if (!contact) return; // race or duplicate; skip
-
-  await db.insert(referrals).values({
-    referrerId: referrer.id,
-    campaignId: referrer.campaignId,
-    referredContactId: contact.id,
-    referredUserId: newUser.id,
-    status: "signed_up",
-    signedUpAt: new Date(),
-  });
-
-  // We'd clear the cookie here; deferred to a server action because
-  // `cookies()` in a server component can't write.
+  const user = await db.query.users.findFirst({ where: eq(users.id, localUserId) });
+  if (!user) return;
+  try {
+    const { attributeReferral } = await import("@/lib/referrals");
+    await attributeReferral({
+      code,
+      contact: {
+        name: user.name ?? user.phone ?? "New customer",
+        email: user.email.endsWith("@no-email.local") ? null : user.email,
+        phone: user.phone,
+        linkedUserId: user.id,
+      },
+      source: "cookie",
+      status: "signed_up",
+    });
+  } catch (err) {
+    console.error("referral attribution failed", err);
+  }
 }
 
 export const REFERRAL_COOKIE_NAME = REFERRAL_COOKIE;

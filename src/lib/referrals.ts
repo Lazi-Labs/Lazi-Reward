@@ -1,31 +1,41 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
-import { headers } from "next/headers";
+import { and, count, desc, eq, inArray, isNull, notInArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
   contacts,
+  giftCards,
   referralCampaigns,
   referralRewards,
   referrals,
   referrers,
+  users,
   type ReferralStatus,
   type RewardStatus,
 } from "@/db/schema";
+import { emitEvent } from "@/lib/events";
+import { isSmsConfigured, sendSms } from "@/lib/notify";
 
-/**
- * Build the absolute origin from the current request, e.g. https://example.com.
- * Falls back to NEXT_PUBLIC_APP_URL or http://localhost:3000.
- */
+/** Public origin for links we hand out. Always the configured app URL, never the request host. */
+export function appOrigin(): string {
+  return (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").replace(/\/+$/, "");
+}
+
+/** Kept for callers that need the live request origin (admin previews). */
 export async function getRequestOrigin(): Promise<string> {
   try {
+    const { headers } = await import("next/headers");
     const h = await headers();
     const host = h.get("x-forwarded-host") ?? h.get("host");
     const proto = h.get("x-forwarded-proto") ?? "https";
     if (host) return `${proto}://${host}`;
   } catch {
-    // headers() throws outside a request context — fall through.
+    // outside a request
   }
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return appOrigin();
+}
+
+export function referralLinkFor(code: string) {
+  return `${appOrigin()}/r/${code}`;
 }
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no I, O, 0, 1
@@ -39,32 +49,34 @@ function generateReferralCode() {
   return out;
 }
 
+/** The one campaign the program runs on: active, attached to an active business, stable order. */
+export async function getActiveCampaign() {
+  const rows = await db
+    .select({ campaign: referralCampaigns })
+    .from(referralCampaigns)
+    .innerJoin(
+      sql`businesses b`,
+      sql`b.id = ${referralCampaigns.businessId} AND b.is_active = true`,
+    )
+    .where(eq(referralCampaigns.isActive, true))
+    .orderBy(sql`b.sort_order`, referralCampaigns.createdAt)
+    .limit(1);
+  return rows[0]?.campaign ?? null;
+}
+
 /**
- * Returns the user's referrer row for the default active campaign,
- * creating it (and the underlying code) on first call. Idempotent.
+ * Returns the user's referrer row for the active campaign, creating it (and
+ * the code) on first call. Returns null when the program is paused.
  */
 export async function getOrCreateReferrerForUser(localUserId: string) {
-  // Default campaign = the first active campaign. Single-business MVP.
-  const campaign = await db.query.referralCampaigns.findFirst({
-    where: eq(referralCampaigns.isActive, true),
-  });
-  if (!campaign) {
-    throw new Error(
-      "No active referral campaign — run `pnpm db:seed` before continuing.",
-    );
-  }
+  const campaign = await getActiveCampaign();
+  if (!campaign) return null;
 
   const existing = await db.query.referrers.findFirst({
-    where: and(
-      eq(referrers.userId, localUserId),
-      eq(referrers.campaignId, campaign.id),
-    ),
+    where: and(eq(referrers.userId, localUserId), eq(referrers.campaignId, campaign.id)),
   });
-  if (existing) return { referrer: existing, campaign };
+  if (existing) return { referrer: { ...existing, referralLink: referralLinkFor(existing.referralCode) }, campaign };
 
-  const origin = await getRequestOrigin();
-
-  // Generate a unique code with a small retry loop on collision.
   for (let attempt = 0; attempt < 5; attempt += 1) {
     const code = generateReferralCode();
     try {
@@ -74,72 +86,274 @@ export async function getOrCreateReferrerForUser(localUserId: string) {
           userId: localUserId,
           campaignId: campaign.id,
           referralCode: code,
-          referralLink: `${origin}/r/${code}`,
+          referralLink: referralLinkFor(code),
           source: "direct",
         })
         .returning();
       return { referrer: created, campaign };
     } catch (err) {
-      // Postgres unique-violation — try a new code.
-      if (
-        err &&
-        typeof err === "object" &&
-        "code" in err &&
-        (err as { code: string }).code === "23505"
-      ) {
-        continue;
-      }
+      if (err && typeof err === "object" && "code" in err && (err as { code: string }).code === "23505") continue;
       throw err;
     }
   }
   throw new Error("Could not generate a unique referral code after 5 attempts");
 }
 
-export type ReferralStats = {
-  pending: number;
-  inProgress: number;
-  completed: number;
-  totalEarningsCents: number;
+// ── Attribution (the one place a referral gets created) ─────────────────────
+
+export type AttributeInput = {
+  code: string;
+  /** The referred person. Existing contact by id, or identity to upsert. */
+  contact:
+    | { id: string }
+    | { name: string; phone?: string | null; email?: string | null; linkedUserId?: string | null };
+  source: "cookie" | "booking" | "manual" | "servicetitan";
+  status?: Extract<ReferralStatus, "pending" | "clicked" | "signed_up" | "contacted" | "hired">;
+  note?: string | null;
+  ip?: string | null;
+  userAgent?: string | null;
+  metadata?: Record<string, unknown>;
 };
 
-export async function getReferralStats(
-  referrerId: string,
-): Promise<ReferralStats> {
-  const rows = await db
-    .select({
-      status: referrals.status,
-      n: count(),
+export type AttributeResult =
+  | { ok: true; referral: typeof referrals.$inferSelect; contactId: string; existing: boolean; referrerUserId: string }
+  | { ok: false; reason: "unknown_code" | "self_referral" | "no_business" | "invalid_contact" };
+
+function norm(v: string | null | undefined) {
+  return (v ?? "").trim().toLowerCase();
+}
+function digits(v: string | null | undefined) {
+  return (v ?? "").replace(/\D/g, "").slice(-10);
+}
+
+export async function attributeReferral(input: AttributeInput): Promise<AttributeResult> {
+  const referrer = await db.query.referrers.findFirst({
+    where: eq(referrers.referralCode, input.code.trim().toUpperCase()),
+    with: { user: true, campaign: true },
+  });
+  if (!referrer) return { ok: false, reason: "unknown_code" };
+  const businessId = referrer.campaign.businessId;
+  if (!businessId) return { ok: false, reason: "no_business" };
+
+  // Resolve / upsert the referred contact.
+  let contact: typeof contacts.$inferSelect | undefined;
+  if ("id" in input.contact) {
+    contact = await db.query.contacts.findFirst({ where: eq(contacts.id, input.contact.id) });
+    if (!contact) return { ok: false, reason: "invalid_contact" };
+  } else {
+    const c = input.contact;
+    const phone = c.phone?.trim() || null;
+    const email = c.email?.trim().toLowerCase() || null;
+    if (!phone && !email && !c.linkedUserId) return { ok: false, reason: "invalid_contact" };
+    if (email) {
+      contact = await db.query.contacts.findFirst({
+        where: and(eq(contacts.businessId, businessId), eq(contacts.email, email)),
+      });
+    }
+    if (!contact && phone) {
+      contact = await db.query.contacts.findFirst({
+        where: and(eq(contacts.businessId, businessId), eq(contacts.phone, phone)),
+      });
+    }
+    if (!contact && c.linkedUserId) {
+      contact = await db.query.contacts.findFirst({
+        where: and(eq(contacts.businessId, businessId), eq(contacts.linkedUserId, c.linkedUserId)),
+      });
+    }
+    if (!contact) {
+      const [created] = await db
+        .insert(contacts)
+        .values({
+          businessId,
+          name: c.name.trim() || phone || email || "Referred customer",
+          phone,
+          email,
+          linkedUserId: c.linkedUserId ?? null,
+          source: "referral",
+          notes: input.note ?? null,
+        })
+        .returning();
+      contact = created;
+    } else if (c.linkedUserId && !contact.linkedUserId) {
+      await db.update(contacts).set({ linkedUserId: c.linkedUserId, updatedAt: new Date() }).where(eq(contacts.id, contact.id));
+    }
+  }
+
+  // Self-referral guard: same user, or same phone/email as the referrer.
+  const ru = referrer.user;
+  if (
+    (contact.linkedUserId && contact.linkedUserId === referrer.userId) ||
+    (contact.email && norm(contact.email) === norm(ru.email)) ||
+    (contact.phone && ru.phone && digits(contact.phone) === digits(ru.phone))
+  ) {
+    return { ok: false, reason: "self_referral" };
+  }
+
+  // One live referral per friend per campaign.
+  const live = await db.query.referrals.findFirst({
+    where: and(
+      eq(referrals.campaignId, referrer.campaignId),
+      eq(referrals.referredContactId, contact.id),
+      notInArray(referrals.status, ["rejected", "cancelled"]),
+    ),
+  });
+  if (live) {
+    return { ok: true, referral: live, contactId: contact.id, existing: true, referrerUserId: referrer.userId };
+  }
+
+  const status = input.status ?? "pending";
+  const now = new Date();
+  const [created] = await db
+    .insert(referrals)
+    .values({
+      referrerId: referrer.id,
+      campaignId: referrer.campaignId,
+      referredContactId: contact.id,
+      referredUserId: contact.linkedUserId ?? null,
+      status,
+      referrerNote: input.note ?? null,
+      source: input.source,
+      ipAddress: input.ip ?? null,
+      userAgent: input.userAgent ?? null,
+      metadata: input.metadata ?? null,
+      clickedAt: now,
+      signedUpAt: status === "signed_up" ? now : null,
+      contactedAt: status === "contacted" || status === "hired" ? now : null,
+      hiredAt: status === "hired" ? now : null,
     })
+    .onConflictDoNothing()
+    .returning();
+  if (!created) {
+    const again = await db.query.referrals.findFirst({
+      where: and(eq(referrals.campaignId, referrer.campaignId), eq(referrals.referredContactId, contact.id)),
+      orderBy: desc(referrals.createdAt),
+    });
+    return { ok: true, referral: again!, contactId: contact.id, existing: true, referrerUserId: referrer.userId };
+  }
+  await db
+    .update(referrers)
+    .set({ totalReferrals: sql`${referrers.totalReferrals} + 1`, updatedAt: now })
+    .where(eq(referrers.id, referrer.id));
+  emitReferralEvent(created.id, "referral.attributed", { source: input.source, status });
+  return { ok: true, referral: created, contactId: contact.id, existing: false, referrerUserId: referrer.userId };
+}
+
+// ── Status transitions ───────────────────────────────────────────────────────
+
+const STAMP: Partial<Record<ReferralStatus, "signedUpAt" | "contactedAt" | "hiredAt" | "convertedAt" | "rejectedAt">> = {
+  signed_up: "signedUpAt",
+  contacted: "contactedAt",
+  hired: "hiredAt",
+  completed: "convertedAt",
+  rejected: "rejectedAt",
+};
+const RANK: Record<ReferralStatus, number> = {
+  pending: 0, clicked: 1, signed_up: 2, contacted: 3, hired: 4, completed: 5, rejected: 9, cancelled: 9,
+};
+
+/** Advance a referral (never regress a completed one). */
+export async function setReferralStatus(referralId: string, status: ReferralStatus, meta?: Record<string, unknown>) {
+  const row = await db.query.referrals.findFirst({ where: eq(referrals.id, referralId) });
+  if (!row) return null;
+  if (row.status === "completed" && status !== "completed") return row;
+  const patch: Record<string, unknown> = { status, updatedAt: new Date() };
+  const stamp = STAMP[status];
+  if (stamp && !row[stamp]) patch[stamp] = new Date();
+  if (meta) patch.metadata = { ...(row.metadata ?? {}), ...meta };
+  const [updated] = await db.update(referrals).set(patch).where(eq(referrals.id, referralId)).returning();
+  if (RANK[status] > RANK[row.status]) emitReferralEvent(referralId, "referral.status", { status });
+  return updated;
+}
+
+/**
+ * The referred friend's job is done (and paid). Idempotent: completes the
+ * referral, creates the pending reward, updates the referrer's totals, and
+ * tells the referrer to come pick a gift card.
+ */
+export async function completeReferral(args: {
+  referralId: string;
+  source: "servicetitan" | "admin" | "poller";
+  stJobId?: string | null;
+  invoiceTotal?: number | null;
+  metadata?: Record<string, unknown>;
+}) {
+  const row = await db.query.referrals.findFirst({
+    where: eq(referrals.id, args.referralId),
+    with: { referrer: { with: { user: true } }, campaign: true },
+  });
+  if (!row) return { ok: false as const, reason: "not_found" };
+  const existingReward = await db.query.referralRewards.findFirst({ where: eq(referralRewards.referralId, row.id) });
+  if (row.status === "completed" && existingReward) return { ok: true as const, reward: existingReward, already: true };
+
+  const now = new Date();
+  await db
+    .update(referrals)
+    .set({
+      status: "completed",
+      convertedAt: row.convertedAt ?? now,
+      rewardedAt: now,
+      hiredAt: row.hiredAt ?? now,
+      updatedAt: now,
+      metadata: { ...(row.metadata ?? {}), ...(args.metadata ?? {}), completed_by: args.source, st_job_id: args.stJobId ?? (row.metadata as Record<string, unknown> | null)?.st_job_id, invoice_total: args.invoiceTotal ?? undefined },
+    })
+    .where(eq(referrals.id, row.id));
+
+  let reward = existingReward;
+  if (!reward) {
+    [reward] = await db
+      .insert(referralRewards)
+      .values({
+        referrerId: row.referrerId,
+        referralId: row.id,
+        amount: row.campaign.rewardAmount,
+        type: row.campaign.rewardType,
+        status: "pending",
+      })
+      .returning();
+    await db
+      .update(referrers)
+      .set({
+        convertedReferrals: sql`${referrers.convertedReferrals} + 1`,
+        totalEarnings: sql`${referrers.totalEarnings} + ${row.campaign.rewardAmount}`,
+        updatedAt: now,
+      })
+      .where(eq(referrers.id, row.referrerId));
+  }
+
+  emitReferralEvent(row.id, "referral.completed", { rewardId: reward.id, amount: Number(reward.amount), source: args.source });
+
+  const phone = row.referrer.user.phone;
+  if (phone && isSmsConfigured()) {
+    const amount = Math.round(Number(reward.amount));
+    await sendSms(
+      phone,
+      `Great news from Perfect Catch — the friend you referred just finished their job. Your $${amount} thank-you is ready: ${appOrigin()}/dashboard`,
+    );
+  }
+  return { ok: true as const, reward, already: false };
+}
+
+// ── Stats / lists for the dashboard ──────────────────────────────────────────
+
+export type ReferralStats = { pending: number; inProgress: number; completed: number; totalEarningsCents: number };
+
+export async function getReferralStats(referrerId: string): Promise<ReferralStats> {
+  const rows = await db
+    .select({ status: referrals.status, n: count() })
     .from(referrals)
     .where(eq(referrals.referrerId, referrerId))
     .groupBy(referrals.status);
-
-  const buckets: Record<ReferralStatus, number> = {
-    pending: 0,
-    clicked: 0,
-    signed_up: 0,
-    contacted: 0,
-    hired: 0,
-    completed: 0,
-    rejected: 0,
-    cancelled: 0,
-  };
-  for (const r of rows) buckets[r.status] += Number(r.n);
-
-  const earningsRow = await db
-    .select({
-      total: sql<string>`COALESCE(SUM(${referrers.totalEarnings}), 0)`,
-    })
+  const b: Record<ReferralStatus, number> = { pending: 0, clicked: 0, signed_up: 0, contacted: 0, hired: 0, completed: 0, rejected: 0, cancelled: 0 };
+  for (const r of rows) b[r.status] += Number(r.n);
+  const [e] = await db
+    .select({ total: sql<string>`COALESCE(SUM(${referrers.totalEarnings}), 0)` })
     .from(referrers)
     .where(eq(referrers.id, referrerId));
-
   return {
-    pending: buckets.pending + buckets.clicked + buckets.signed_up,
-    inProgress: buckets.contacted + buckets.hired,
-    completed: buckets.completed,
-    totalEarningsCents: Math.round(
-      Number(earningsRow[0]?.total ?? "0") * 100,
-    ),
+    pending: b.pending + b.clicked + b.signed_up,
+    inProgress: b.contacted + b.hired,
+    completed: b.completed,
+    totalEarningsCents: Math.round(Number(e?.total ?? "0") * 100),
   };
 }
 
@@ -150,12 +364,10 @@ export type ReferralRowForList = {
   referredName: string;
   referredEmail: string | null;
   referredPhone: string | null;
+  booked: boolean;
 };
 
-export async function listReferralsForReferrer(
-  referrerId: string,
-  limit = 25,
-): Promise<ReferralRowForList[]> {
+export async function listReferralsForReferrer(referrerId: string, limit = 25): Promise<ReferralRowForList[]> {
   const rows = await db
     .select({
       id: referrals.id,
@@ -164,20 +376,21 @@ export async function listReferralsForReferrer(
       referredName: contacts.name,
       referredEmail: contacts.email,
       referredPhone: contacts.phone,
+      metadata: referrals.metadata,
     })
     .from(referrals)
     .innerJoin(contacts, eq(referrals.referredContactId, contacts.id))
     .where(eq(referrals.referrerId, referrerId))
     .orderBy(desc(referrals.createdAt))
     .limit(limit);
-
-  return rows.map((r) => ({ ...r, status: r.status as ReferralStatus }));
+  return rows.map(({ metadata, ...r }) => ({
+    ...r,
+    status: r.status as ReferralStatus,
+    booked: Boolean((metadata as Record<string, unknown> | null)?.st_lead_id),
+  }));
 }
 
-/**
- * Server-action target: create a Contact + Referral pair for the given referrer.
- * Returns the new referral id. Throws on validation failure.
- */
+/** Customer-submitted referral by name/phone/email (dashboard form). */
 export async function createManualReferral(args: {
   referrerLocalUserId: string;
   name: string;
@@ -185,72 +398,29 @@ export async function createManualReferral(args: {
   phone?: string;
   note?: string;
 }) {
-  const { referrer, campaign } = await getOrCreateReferrerForUser(
-    args.referrerLocalUserId,
-  );
-  if (!campaign.businessId) {
-    throw new Error("Default campaign has no business attached");
-  }
-
-  // Upsert contact by (business, email|phone).
-  let contact = args.email
-    ? await db.query.contacts.findFirst({
-        where: and(
-          eq(contacts.businessId, campaign.businessId),
-          eq(contacts.email, args.email),
-        ),
-      })
-    : null;
-  if (!contact && args.phone) {
-    contact = await db.query.contacts.findFirst({
-      where: and(
-        eq(contacts.businessId, campaign.businessId),
-        eq(contacts.phone, args.phone),
-      ),
-    });
-  }
-  if (!contact) {
-    const [created] = await db
-      .insert(contacts)
-      .values({
-        businessId: campaign.businessId,
-        name: args.name,
-        email: args.email ?? null,
-        phone: args.phone ?? null,
-        source: "referral",
-        notes: args.note ?? null,
-      })
-      .returning();
-    contact = created;
-  }
-
-  const [created] = await db
-    .insert(referrals)
-    .values({
-      referrerId: referrer.id,
-      campaignId: campaign.id,
-      referredContactId: contact.id,
-      status: "pending",
-      referrerNote: args.note ?? null,
-      source: "manual",
-    })
-    .returning();
-
-  return { referralId: created.id };
+  const got = await getOrCreateReferrerForUser(args.referrerLocalUserId);
+  if (!got) throw new Error("Referral program is paused");
+  const res = await attributeReferral({
+    code: got.referrer.referralCode,
+    contact: { name: args.name, email: args.email ?? null, phone: args.phone ?? null },
+    source: "manual",
+    status: "pending",
+    note: args.note ?? null,
+  });
+  if (!res.ok) throw new Error(res.reason === "self_referral" ? "You can't refer yourself." : "Could not save that referral.");
+  return { referralId: res.referral.id, existing: res.existing };
 }
 
 export const REFERRAL_STATUSES_FOR_DISPLAY: Record<ReferralStatus, string> = {
   pending: "New",
   clicked: "Clicked link",
   signed_up: "Signed up",
-  contacted: "Contacted",
-  hired: "Hired",
+  contacted: "Booked",
+  hired: "Job scheduled",
   completed: "Completed",
   rejected: "Not a fit",
   cancelled: "Cancelled",
 };
-
-void inArray; // reserved for filtered queries in later phases
 
 // ── Rewards (claim flow) ─────────────────────────────────────────────────────
 
@@ -259,55 +429,108 @@ export type ClaimableReward = {
   amount: string;
   status: RewardStatus;
   paymentMethod: string | null;
+  paymentReference: string | null;
   referredName: string;
   createdAt: Date;
+  giftId: string | null;
+  giftStatus: string | null;
+  giftProduct: string | null;
+  giftLink: string | null;
 };
 
-/** Rewards the referrer can still pick a payout for (pending) plus in-flight ones. */
-export async function listRewardsForReferrer(
-  referrerId: string,
-): Promise<ClaimableReward[]> {
+export async function listRewardsForReferrer(referrerId: string): Promise<ClaimableReward[]> {
   const rows = await db
     .select({
       id: referralRewards.id,
       amount: referralRewards.amount,
       status: referralRewards.status,
       paymentMethod: referralRewards.paymentMethod,
+      paymentReference: referralRewards.paymentReference,
       referredName: contacts.name,
       createdAt: referralRewards.createdAt,
+      giftId: giftCards.id,
+      giftStatus: giftCards.status,
+      giftProduct: giftCards.productName,
+      giftLink: giftCards.redemptionLink,
     })
     .from(referralRewards)
     .innerJoin(referrals, eq(referralRewards.referralId, referrals.id))
     .innerJoin(contacts, eq(referrals.referredContactId, contacts.id))
+    .leftJoin(giftCards, eq(giftCards.externalId, sql`'reward-' || ${referralRewards.id}::text`))
     .where(eq(referralRewards.referrerId, referrerId))
     .orderBy(desc(referralRewards.createdAt));
   return rows.map((r) => ({ ...r, status: r.status as RewardStatus }));
 }
 
-/** Customer chose how they want a pending reward paid. */
-export async function claimReward(args: {
-  rewardId: string;
-  referrerId: string;
-  paymentMethod: string;
-  paymentDetails?: string;
-}) {
-  const [updated] = await db
+/**
+ * Referrer picked a gift card for a pending reward → create the gift ledger
+ * row (external id `reward-<id>`) and place the Tremendous order. Returns the
+ * gift row; `referral_rewards` mirrors its outcome.
+ */
+export async function claimRewardAsGift(args: { rewardId: string; referrerId: string; productId: string }) {
+  const reward = await db.query.referralRewards.findFirst({
+    where: and(eq(referralRewards.id, args.rewardId), eq(referralRewards.referrerId, args.referrerId)),
+    with: { referrer: { with: { user: true, campaign: { with: { business: true } } } } },
+  });
+  if (!reward) return null;
+  const business = reward.referrer.campaign.business;
+  if (!business) return null;
+  const user = reward.referrer.user;
+
+  // Referrer as a contact (for the gift ledger + Tremendous recipient).
+  let contact =
+    (await db.query.contacts.findFirst({ where: and(eq(contacts.businessId, business.id), eq(contacts.linkedUserId, user.id)) })) ??
+    (user.email && !user.email.endsWith("@no-email.local")
+      ? await db.query.contacts.findFirst({ where: and(eq(contacts.businessId, business.id), eq(contacts.email, user.email)) })
+      : undefined) ??
+    (user.phone ? await db.query.contacts.findFirst({ where: and(eq(contacts.businessId, business.id), eq(contacts.phone, user.phone)) }) : undefined);
+  if (!contact) {
+    const [c] = await db
+      .insert(contacts)
+      .values({
+        businessId: business.id,
+        linkedUserId: user.id,
+        name: user.name ?? user.phone ?? "Referrer",
+        email: user.email.endsWith("@no-email.local") ? null : user.email,
+        phone: user.phone,
+        source: "referral",
+      })
+      .returning();
+    contact = c;
+  }
+
+  const externalId = `reward-${reward.id}`;
+  let gift = await db.query.giftCards.findFirst({ where: eq(giftCards.externalId, externalId) });
+  if (!gift) {
+    [gift] = await db
+      .insert(giftCards)
+      .values({
+        businessId: business.id,
+        contactId: contact.id,
+        source: "referral",
+        amount: reward.amount,
+        currencyCode: "USD",
+        status: "offered",
+        externalId,
+        campaignId: business.tremendousCampaignId,
+      })
+      .returning();
+  }
+  const { claimGift } = await import("@/lib/gifts");
+  const result = await claimGift(gift.id, args.productId);
+  const ok = result && (result.status === "created" || result.status === "delivered");
+  await db
     .update(referralRewards)
     .set({
-      paymentMethod: args.paymentMethod,
-      paymentDetails: args.paymentDetails ?? null,
-      status: "processing",
+      status: ok ? "issued" : "failed",
+      paymentMethod: ok ? `gift_card:${result?.productName ?? args.productId}` : reward.paymentMethod,
+      paymentReference: gift.id,
+      failureReason: ok ? null : (result?.failureReason ?? "gift_failed"),
+      sentAt: ok ? new Date() : null,
       updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(referralRewards.id, args.rewardId),
-        eq(referralRewards.referrerId, args.referrerId),
-        eq(referralRewards.status, "pending"),
-      ),
-    )
-    .returning();
-  return updated ?? null;
+    .where(eq(referralRewards.id, reward.id));
+  return result;
 }
 
 /** Optional "friend gets X off" copy stored on campaign.settings.friendOffer. */
@@ -315,3 +538,35 @@ export function friendOfferFor(campaign: { settings: Record<string, unknown> | n
   const v = campaign.settings?.friendOffer;
   return typeof v === "string" && v.trim() ? v.trim() : null;
 }
+
+// ── Events ───────────────────────────────────────────────────────────────────
+
+export async function emitReferralEvent(referralId: string, type: "referral.attributed" | "referral.status" | "referral.completed" | "booking.created", data: Record<string, unknown>) {
+  if (!process.env.OUTBOUND_EVENTS_URL) return;
+  try {
+    const row = await db.query.referrals.findFirst({
+      where: eq(referrals.id, referralId),
+      with: { referredContact: true, campaign: { with: { business: true } }, referrer: { with: { user: true } } },
+    });
+    if (!row) return;
+    emitEvent({
+      type,
+      business: row.campaign.business?.slug ?? "perfect-catch-electric",
+      requestId: row.id,
+      token: null,
+      contactId: row.referredContactId,
+      externalRefs: row.referredContact.externalRefs ?? null,
+      metadata: { ...(row.metadata ?? {}), referrer_name: row.referrer.user.name, referrer_phone: row.referrer.user.phone, referral_code: row.referrer.referralCode },
+      data,
+    });
+  } catch (err) {
+    console.error("emitReferralEvent failed", type, err);
+  }
+}
+
+// Open referrals that can still be matched to a completed job.
+export const OPEN_REFERRAL_STATUSES: ReferralStatus[] = ["pending", "clicked", "signed_up", "contacted", "hired"];
+void inArray;
+void isNull;
+void or;
+void users;

@@ -12,6 +12,7 @@ import {
   type ReferralStatus,
 } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin";
+import { completeReferral, setReferralStatus } from "@/lib/referrals";
 
 const setStatusSchema = z.object({
   referralId: z.string().uuid(),
@@ -28,19 +29,15 @@ export async function setReferralStatusAction(formData: FormData) {
     return { ok: false, error: "Invalid input" } as const;
   }
 
-  const now = new Date();
   const status = parsed.data.status as ReferralStatus;
-  const updates: Record<string, Date | string> = { status };
-  if (status === "contacted") updates.contactedAt = now;
-  else if (status === "hired") updates.hiredAt = now;
-  else if (status === "completed") updates.convertedAt = now;
-  else if (status === "rejected") updates.rejectedAt = now;
-
-  const [updated] = await db
-    .update(referrals)
-    .set(updates)
-    .where(eq(referrals.id, parsed.data.referralId))
-    .returning();
+  let updated: typeof referrals.$inferSelect | null | undefined;
+  if (status === "completed") {
+    const res = await completeReferral({ referralId: parsed.data.referralId, source: "admin" });
+    if (!res.ok) return { ok: false, error: "Referral not found" } as const;
+    updated = await db.query.referrals.findFirst({ where: eq(referrals.id, parsed.data.referralId) });
+  } else {
+    updated = await setReferralStatus(parsed.data.referralId, status);
+  }
 
   if (updated) {
     await db.insert(communicationLogs).values({

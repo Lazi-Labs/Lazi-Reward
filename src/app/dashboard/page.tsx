@@ -11,8 +11,11 @@ import {
   listReferralsForReferrer,
   listRewardsForReferrer,
 } from "@/lib/referrals";
+import { productsForGift } from "@/lib/gifts";
 import { ensureCurrentUser } from "@/lib/users";
+import { getBusinessById } from "@/lib/reviews";
 
+import { RefCookieClear } from "./ref-cookie-clear";
 import { ReferHero } from "./refer-hero";
 import { ReferralPipeline } from "./referral-pipeline";
 import { RewardClaim } from "./reward-claim";
@@ -35,17 +38,33 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
 
 export default async function DashboardPage() {
   const user = await ensureCurrentUser();
-  const { referrer, campaign } = await getOrCreateReferrerForUser(user.id);
-  const [stats, rows, rewards] = await Promise.all([
+  const got = await getOrCreateReferrerForUser(user.id);
+  if (!got) {
+    return (
+      <div className="pce-wash flex min-h-screen items-center justify-center px-5">
+        <BrandCard className="max-w-[560px] text-center">
+          <h1 className="mb-2 font-display text-[30px] text-pce-navy">Referral Program Paused</h1>
+          <p className="text-pce-body">We&rsquo;re not accepting referrals right now. Check back soon.</p>
+        </BrandCard>
+      </div>
+    );
+  }
+  const { referrer, campaign } = got;
+  const [stats, rows, rewards, business] = await Promise.all([
     getReferralStats(referrer.id),
     listReferralsForReferrer(referrer.id),
     listRewardsForReferrer(referrer.id),
+    campaign.businessId ? getBusinessById(campaign.businessId) : Promise.resolve(null),
   ]);
+  const claimable = rewards.filter((r) => r.status === "pending" || (r.status === "failed" && !r.giftLink));
+  const products =
+    claimable.length && business
+      ? await productsForGift({ campaignId: business.tremendousCampaignId, amount: campaign.rewardAmount })
+      : [];
 
   const rewardAmount = dollarFmt.format(Number(campaign.rewardAmount));
   const friendOffer = friendOfferFor(campaign);
   const brand = brandFor(null);
-  const claimable = rewards.filter((r) => r.status === "pending");
 
   return (
     <div className="pce-wash min-h-screen">
@@ -69,8 +88,9 @@ export default async function DashboardPage() {
           </div>
         </header>
 
+        <RefCookieClear />
         {claimable.length > 0 ? (
-          <RewardClaim rewards={claimable} rewardAmountFmt={dollarFmt.format} />
+          <RewardClaim rewards={claimable} products={products} rewardAmountFmt={dollarFmt.format} />
         ) : null}
 
         <section className="grid gap-5 lg:grid-cols-5">

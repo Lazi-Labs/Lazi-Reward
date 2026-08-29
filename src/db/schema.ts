@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   boolean,
   index,
@@ -315,6 +315,10 @@ export const referrals = pgTable(
     index("referrals_referrer_status_idx").on(table.referrerId, table.status),
     index("referrals_campaign_idx").on(table.campaignId),
     index("referrals_status_idx").on(table.status),
+    // One live referral per friend per campaign (rejected/cancelled don't block a retry).
+    uniqueIndex("referrals_live_contact_unique")
+      .on(table.campaignId, table.referredContactId)
+      .where(sql`status NOT IN ('rejected', 'cancelled')`),
   ],
 );
 

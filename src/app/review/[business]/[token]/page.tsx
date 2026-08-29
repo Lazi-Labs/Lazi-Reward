@@ -16,6 +16,7 @@ import { ReviewFunnel } from "../../review-funnel";
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ business: string; token: string }>;
+type Search = Promise<{ rating?: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { business } = await params;
@@ -31,8 +32,10 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
  * text/email. Knows who they are, so the outcome lands on their contact and
  * their thank-you gift (if issued) is shown.
  */
-export default async function TokenReviewPage({ params }: { params: Params }) {
+export default async function TokenReviewPage({ params, searchParams }: { params: Params; searchParams: Search }) {
   const { business, token } = await params;
+  const { rating } = await searchParams;
+  const initialRating = [1, 2, 3, 4, 5].includes(Number(rating)) ? Number(rating) : null;
   const req = await getReviewRequestByToken(token);
   if (!req) notFound();
   if (req.business.slug !== business) {
@@ -62,6 +65,7 @@ export default async function TokenReviewPage({ params }: { params: Params }) {
         token={token}
         googleUrl={googleReviewUrlFor(req.business)}
         contactFirstName={firstName}
+        initialRating={initialRating}
         gift={
           showGift && (gift.redemptionLink || products.length > 0)
             ? {

@@ -67,12 +67,13 @@ export default async function ReferralLandingPage({ params }: { params: Promise<
             ? `Book with us through this link and get ${friendOffer} your first service call. ${first} gets a thank-you too.`
             : `Book your first service call through this link and we'll take great care of you — and ${first} gets a ${reward ?? "thank-you"} gift card when your job is done.`}
         </p>
-        <Link href={`/r/${code}/go`} className={`${kitButton.primary} w-full sm:w-auto`}>
-          Claim my referral →
+        <Link href={`/book?ref=${code}`} className={`${kitButton.primary} w-full sm:w-auto`}>
+          Book your service →
         </Link>
         <p className="mt-4 text-[13px] text-pce-muted">
-          Creates a free account so we can credit {first}. Or just call{" "}
-          <a href={brand.phoneHref} className="font-bold text-pce-coral">{brand.phone}</a> and mention {first}.
+          Takes a minute; our office calls you back to confirm. Or call{" "}
+          <a href={brand.phoneHref} className="whitespace-nowrap font-bold text-pce-coral">{brand.phone}</a> and mention {first}.
+          {" "}<Link href={`/r/${code}/go`} className="underline">Create an account instead</Link>
         </p>
         <ul className="mt-6 grid gap-2 text-left text-[14.5px] text-pce-body sm:grid-cols-3">
           {brand.trust.map((t) => (

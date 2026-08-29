@@ -32,6 +32,10 @@ export async function listActiveBusinesses() {
   });
 }
 
+export async function getBusinessById(id: string) {
+  return db.query.businesses.findFirst({ where: eq(businesses.id, id) });
+}
+
 export async function getBusinessBySlug(slug: string) {
   return db.query.businesses.findFirst({
     where: and(eq(businesses.slug, slug), eq(businesses.isActive, true)),

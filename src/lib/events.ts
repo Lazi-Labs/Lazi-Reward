@@ -16,7 +16,11 @@ export type RewardsEvent = {
     | "review_request.opened"
     | "rating.submitted"
     | "feedback.submitted"
-    | "gift.claimed";
+    | "gift.claimed"
+    | "referral.attributed"
+    | "referral.status"
+    | "referral.completed"
+    | "booking.created";
   at: string;
   business: string;
   requestId: string | null;

@@ -16,6 +16,8 @@ type Props = {
   token: string | null;
   googleUrl: string | null;
   contactFirstName: string | null;
+  /** From an email link (?rating=N): preselect, never auto-submit. */
+  initialRating: number | null;
   /** Unconditional thank-you gift for this customer, if one was offered. */
   gift: {
     amount: number;
@@ -170,11 +172,12 @@ export function ReviewFunnel({
   token,
   googleUrl,
   contactFirstName,
+  initialRating,
   gift,
 }: Props) {
   const [step, setStep] = useState<Step>("rate");
   const [hover, setHover] = useState(0);
-  const [picked, setPicked] = useState(0);
+  const [picked, setPicked] = useState(initialRating ?? 0);
   const [reviewId, setReviewId] = useState<string | null>(null);
   const [scores, setScores] = useState<Record<string, number>>({});
   const [message, setMessage] = useState("");
@@ -283,7 +286,11 @@ export function ReviewFunnel({
             ))}
           </div>
           <p className="mt-5 text-[15px] text-pce-muted">
-            {hover ? `${hover} of 5 stars` : "Your feedback helps our whole crew."}
+            {hover
+              ? `${hover} of 5 stars`
+              : initialRating && picked === initialRating
+                ? `Tap to confirm your ${initialRating}-star rating — or pick a different one.`
+                : "Your feedback helps our whole crew."}
           </p>
         </BrandCard>
       </>
