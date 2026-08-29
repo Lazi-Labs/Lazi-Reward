@@ -27,9 +27,12 @@ export function BrandFrame({
         className="mb-5 h-auto w-[170px] sm:mb-7 sm:w-[220px]"
       />
       <div className={cn("w-full", className)}>{children}</div>
-      <p className="mt-6 text-center text-[13.5px] text-pce-muted">
+      <p className="mt-6 text-balance text-center text-[13.5px] text-pce-muted">
         {brand.longName} ·{" "}
-        <a href={brand.phoneHref} className="font-bold text-pce-coral hover:text-pce-red-deep">
+        <a
+          href={brand.phoneHref}
+          className="whitespace-nowrap font-bold text-pce-coral hover:text-pce-red-deep"
+        >
           {brand.phone}
         </a>
       </p>

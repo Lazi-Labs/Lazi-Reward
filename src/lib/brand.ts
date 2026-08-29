@@ -19,6 +19,8 @@ export type BusinessBrand = {
   googleReviewUrl: string | null;
   /** Public website the referral share copy points to. */
   website: string;
+  /** Three short trust points shown on the referral landing. */
+  trust: { strong: string; rest: string }[];
 };
 
 export const BRANDS: Record<string, BusinessBrand> = {
@@ -32,6 +34,11 @@ export const BRANDS: Record<string, BusinessBrand> = {
     logoAlt: "Perfect Catch Swimming Pool Repair, Gas & Electric",
     googleReviewUrl: "https://g.page/r/CUDCVygcLSPwEBM/review",
     website: "https://callperfectcatch.com",
+    trust: [
+      { strong: "Licensed", rest: "pool, gas & electric" },
+      { strong: "Local", rest: "Largo & Pinellas" },
+      { strong: "5-star", rest: "rated on Google" },
+    ],
   },
   "liv-pools": {
     slug: "liv-pools",
@@ -43,6 +50,11 @@ export const BRANDS: Record<string, BusinessBrand> = {
     logoAlt: "LIV Pools",
     googleReviewUrl: null,
     website: "https://livpools.com",
+    trust: [
+      { strong: "Licensed", rest: "pool builder · CPC1459998" },
+      { strong: "Local", rest: "Tampa Bay" },
+      { strong: "Custom", rest: "pools, spas & outdoor living" },
+    ],
   },
 };
 

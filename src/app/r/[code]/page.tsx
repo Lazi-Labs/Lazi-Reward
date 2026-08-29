@@ -75,9 +75,11 @@ export default async function ReferralLandingPage({ params }: { params: Promise<
           <a href={brand.phoneHref} className="font-bold text-pce-coral">{brand.phone}</a> and mention {first}.
         </p>
         <ul className="mt-6 grid gap-2 text-left text-[14.5px] text-pce-body sm:grid-cols-3">
-          <li className="rounded-xl bg-pce-sky px-3 py-2.5"><strong className="text-pce-navy">Licensed</strong> pool, gas &amp; electric</li>
-          <li className="rounded-xl bg-pce-sky px-3 py-2.5"><strong className="text-pce-navy">Local</strong> Largo &amp; Pinellas</li>
-          <li className="rounded-xl bg-pce-sky px-3 py-2.5"><strong className="text-pce-navy">5-star</strong> rated on Google</li>
+          {brand.trust.map((t) => (
+            <li key={t.strong} className="rounded-xl bg-pce-sky px-3 py-2.5">
+              <strong className="text-pce-navy">{t.strong}</strong> {t.rest}
+            </li>
+          ))}
         </ul>
       </BrandCard>
     </BrandFrame>
