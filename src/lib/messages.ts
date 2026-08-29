@@ -22,7 +22,7 @@ export function buildReviewRequestMessage(args: {
   const lines = [`${hi} thanks for choosing ${args.brand.name}!`];
   if (args.giftLink && args.giftAmount) {
     lines.push(
-      `Here's a ${money.format(args.giftAmount)} thank-you from our crew — pick your gift here: ${args.giftLink}`,
+      `Here's a ${money.format(args.giftAmount)} thank-you from our crew — pick your gift card here: ${args.giftLink}`,
     );
   }
   lines.push(`If you have 60 seconds, we'd love to hear how we did: ${args.reviewLink}`);

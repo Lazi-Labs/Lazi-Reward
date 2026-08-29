@@ -56,8 +56,7 @@ function GiftBanner({ gift }: { gift: NonNullable<Props["gift"]> }) {
         A {money.format(gift.amount)} Thank-You, On Us
       </p>
       <p className="mb-3 mt-1 text-[14.5px] leading-[1.5] text-pce-brown">
-        Thanks for choosing us. Pick a gift card, Venmo, Cash App, or a charity — it&rsquo;s yours
-        either way.
+        Thanks for choosing us. Pick the gift card you like — it&rsquo;s yours either way.
       </p>
       <a href={gift.link} target="_blank" rel="noopener" className={cn(kitButton.primary, "text-base")}>
         Pick Your Gift →
