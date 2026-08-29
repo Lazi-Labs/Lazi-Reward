@@ -35,6 +35,11 @@ export const ST_IDS = {
   get onlineCampaignId() {
     return Number(process.env.ST_ONLINE_CAMPAIGN_ID || 55647110);
   },
+  /** Booking Provider Tag id (Settings → Integrations → Booking Provider Tags). */
+  get bookingProviderId() {
+    const v = Number(process.env.ST_BOOKING_PROVIDER_ID);
+    return Number.isFinite(v) && v > 0 ? v : null;
+  },
 };
 
 export class ServiceTitanError extends Error {
@@ -268,6 +273,70 @@ export async function getLead(id: number) {
     "GET",
     `/crm/v2/tenant/{tenant}/leads/${id}`,
   );
+}
+
+// ── Bookings (Calls screen) ──────────────────────────────────────────────────
+
+export type CreateBookingInput = {
+  name: string;
+  phone: string;
+  email?: string | null;
+  address: { street: string; unit?: string | null; city: string; state: string; zip: string };
+  customerId?: number | null;
+  locationId?: number | null;
+  businessUnitId: number;
+  jobTypeId: number;
+  campaignId: number;
+  priority: "Low" | "Normal" | "High" | "Urgent";
+  summary: string;
+  /** Preferred arrival window, if the customer gave one. */
+  start?: Date | null;
+  externalId: string;
+  isFirstTimeClient: boolean;
+};
+
+/**
+ * A Booking shows up on the CSR's Calls screen; they accept it into a job or
+ * dismiss it. Requires the API app to be connected to a Booking Provider Tag
+ * (ST_BOOKING_PROVIDER_ID). Throws ServiceTitanError when not configured.
+ */
+export async function createBooking(input: CreateBookingInput) {
+  const provider = ST_IDS.bookingProviderId;
+  if (!provider) throw new ServiceTitanError("ST_BOOKING_PROVIDER_ID not set", 0, null);
+  const contacts = [
+    { type: "MobilePhone", value: input.phone },
+    ...(input.email ? [{ type: "Email", value: input.email }] : []),
+  ];
+  const res = await request<{ id: number; status?: string }>(
+    "POST",
+    `/crm/v2/tenant/{tenant}/booking-provider/${provider}/bookings`,
+    {
+      source: "PCE Rewards web booking",
+      name: input.name,
+      address: {
+        street: input.address.street,
+        unit: input.address.unit ?? null,
+        city: input.address.city,
+        state: input.address.state,
+        zip: input.address.zip,
+        country: "USA",
+      },
+      contacts,
+      customerType: "Residential",
+      customerId: input.customerId ?? undefined,
+      locationId: input.locationId ?? undefined,
+      businessUnitId: input.businessUnitId,
+      jobTypeId: input.jobTypeId,
+      campaignId: input.campaignId,
+      priority: input.priority,
+      summary: input.summary,
+      start: input.start ? input.start.toISOString() : undefined,
+      isFirstTimeClient: input.isFirstTimeClient,
+      isSendConfirmationEmail: false,
+      externalId: input.externalId,
+    },
+  );
+  return res;
 }
 
 // ── Jobs (poller) ────────────────────────────────────────────────────────────

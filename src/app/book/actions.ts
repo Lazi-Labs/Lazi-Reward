@@ -11,6 +11,7 @@ import { attributeReferral, emitReferralEvent, friendOfferFor, getActiveCampaign
 import {
   ServiceTitanError,
   ST_IDS,
+  createBooking,
   createCustomerWithLocation,
   createLead,
   findCustomerByPhone,
@@ -198,17 +199,40 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
         dt.setUTCHours(d.preferredWindow === "afternoon" ? 16 : 13, 0, 0, 0); // 12pm / 9am ET
         return dt;
       })();
-      const lead = await createLead({
-        customerId,
-        locationId,
-        businessUnitId: svc.businessUnitId,
-        jobTypeId: svc.jobTypeId,
-        campaignId: referralId ? ST_IDS.referralCampaignId : ST_IDS.onlineCampaignId,
-        priority: svc.priority,
-        summary: summaryLines.join("\n"),
-        followUpDate,
-      });
-      refs.st_lead_id = String(lead.id);
+      const campaignId = referralId ? ST_IDS.referralCampaignId : ST_IDS.onlineCampaignId;
+      const summary = summaryLines.join("\n");
+      // Preferred: a Booking on the CSR's Calls screen. Fallback: a Lead.
+      if (ST_IDS.bookingProviderId) {
+        const booking = await createBooking({
+          name: d.name.trim(),
+          phone: d.phone.trim(),
+          email,
+          address: { street: d.street.trim(), unit: d.unit || null, city: d.city.trim(), state: d.state.toUpperCase(), zip: d.zip.trim() },
+          customerId,
+          locationId,
+          businessUnitId: svc.businessUnitId,
+          jobTypeId: svc.jobTypeId,
+          campaignId,
+          priority: svc.priority,
+          summary,
+          start: svc.emergency || d.preferredWindow === "asap" ? null : followUpDate,
+          externalId: `pce-rewards-${contactId}-${Date.now()}`,
+          isFirstTimeClient: !existing,
+        });
+        refs.st_booking_id = String(booking.id);
+      } else {
+        const lead = await createLead({
+          customerId,
+          locationId,
+          businessUnitId: svc.businessUnitId,
+          jobTypeId: svc.jobTypeId,
+          campaignId,
+          priority: svc.priority,
+          summary,
+          followUpDate,
+        });
+        refs.st_lead_id = String(lead.id);
+      }
       stBooked = true;
     } catch (err) {
       console.error("ServiceTitan booking failed", err instanceof ServiceTitanError ? err.body : err);
