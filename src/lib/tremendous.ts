@@ -6,7 +6,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
  * Production: PROD_ key + https://api.tremendous.com/api/v2
  */
 
-const DEFAULT_URL = "https://testflight.tremendous.com/api/v2";
+// Production by default: an unset/blank TREMENDOUS_API_URL used to mean sandbox, so a half-applied production
+// flip sent a real claim to testflight with a production funding source and failed (2026-08-30).
+// Sandbox is opt-in — set TREMENDOUS_API_URL to the testflight host explicitly.
+const DEFAULT_URL = "https://api.tremendous.com/api/v2";
 
 function apiKey() {
   return process.env.TREMENDOUS_API_KEY?.trim() || null;
@@ -60,7 +63,9 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       (json && typeof json === "object" && "errors" in json
         ? JSON.stringify((json as { errors: unknown }).errors)
         : null) ?? `${res.status} ${res.statusText}`;
-    throw new TremendousError(`Tremendous ${method} ${path} failed: ${msg}`, res.status, json);
+    // Name the host: "funding source not found" almost always means the request went to the other environment.
+    const host = new URL(tremendousBaseUrl()).host;
+    throw new TremendousError(`Tremendous ${method} ${path} failed on ${host}: ${msg}`, res.status, json);
   }
   return json as T;
 }
