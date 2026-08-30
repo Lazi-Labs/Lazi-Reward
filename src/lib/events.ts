@@ -1,5 +1,7 @@
 import { createHmac } from "node:crypto";
 
+import { after } from "next/server";
+
 /**
  * Outbound events to upstream automations (e.g. the ST→GHL sync Worker).
  * Fire-and-forget; never blocks the customer flow. Signed with
@@ -43,8 +45,9 @@ export function emitEvent(evt: Omit<RewardsEvent, "at">) {
   };
   // Deliberately not awaited by callers; the Worker endpoint is idempotent on
   // (requestId, type), so blind retries are safe. Retries network errors and
-  // 429/5xx with backoff; logs every outcome.
-  void (async () => {
+  // 429/5xx with backoff; logs every outcome. Runs inside `after()` so Vercel
+  // keeps the function alive past the response instead of killing the retries.
+  const deliver = async () => {
     const delays = [0, 2_000, 10_000];
     for (let attempt = 0; attempt < delays.length; attempt += 1) {
       if (delays[attempt]) await new Promise((r) => setTimeout(r, delays[attempt]));
@@ -63,5 +66,10 @@ export function emitEvent(evt: Omit<RewardsEvent, "at">) {
       }
     }
     console.error(`emitEvent ${evt.type} gave up after ${delays.length} attempts`);
-  })();
+  };
+  try {
+    after(deliver);
+  } catch {
+    void deliver(); // outside a request scope (scripts/tests)
+  }
 }
