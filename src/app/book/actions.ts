@@ -201,15 +201,15 @@ export async function submitBookingAction(input: BookingInput): Promise<BookingR
       })();
       const campaignId = referralId ? ST_IDS.referralCampaignId : ST_IDS.onlineCampaignId;
       const summary = summaryLines.join("\n");
-      // Preferred: a Booking on the CSR's Calls screen. Fallback: a Lead.
+      // Preferred: a Booking on the CSR's Calls screen (not linked to the
+      // customer by design — the poller re-stamps the marker on whichever
+      // customer the CSR converts it to). Fallback: a Lead.
       if (ST_IDS.bookingProviderId) {
         const booking = await createBooking({
           name: d.name.trim(),
           phone: d.phone.trim(),
           email,
           address: { street: d.street.trim(), unit: d.unit || null, city: d.city.trim(), state: d.state.toUpperCase(), zip: d.zip.trim() },
-          customerId,
-          locationId,
           businessUnitId: svc.businessUnitId,
           jobTypeId: svc.jobTypeId,
           campaignId,

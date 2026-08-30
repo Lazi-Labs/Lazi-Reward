@@ -282,8 +282,6 @@ export type CreateBookingInput = {
   phone: string;
   email?: string | null;
   address: { street: string; unit?: string | null; city: string; state: string; zip: string };
-  customerId?: number | null;
-  locationId?: number | null;
   businessUnitId: number;
   jobTypeId: number;
   campaignId: number;
@@ -295,48 +293,66 @@ export type CreateBookingInput = {
   isFirstTimeClient: boolean;
 };
 
+export type StBookingStatus = "New" | "Converted" | "Dismissed" | "Accepted";
+
+export type StBooking = {
+  id: number;
+  status: StBookingStatus;
+  jobId: number | null;
+  externalId: string;
+  campaignId?: number | null;
+  businessUnitId?: number | null;
+  jobTypeId?: number | null;
+  createdOn: string;
+  modifiedOn: string;
+};
+
 /**
  * A Booking shows up on the CSR's Calls screen; they accept it into a job or
- * dismiss it. Requires the API app to be connected to a Booking Provider Tag
- * (ST_BOOKING_PROVIDER_ID). Throws ServiceTitanError when not configured.
+ * dismiss it. Per the CRM v2 spec a booking carries only name/address/contacts
+ * — there is NO customer/location link. ServiceTitan matches or creates the
+ * customer when the CSR converts it, and exposes the result as `jobId`
+ * (see `getBooking`). Requires ST_BOOKING_PROVIDER_ID.
  */
 export async function createBooking(input: CreateBookingInput) {
   const provider = ST_IDS.bookingProviderId;
   if (!provider) throw new ServiceTitanError("ST_BOOKING_PROVIDER_ID not set", 0, null);
   const contacts = [
-    { type: "MobilePhone", value: input.phone },
-    ...(input.email ? [{ type: "Email", value: input.email }] : []),
+    { type: "MobilePhone", value: input.phone, memo: "Booked online" },
+    ...(input.email ? [{ type: "Email", value: input.email, memo: null as string | null }] : []),
   ];
-  const res = await request<{ id: number; status?: string }>(
-    "POST",
-    `/crm/v2/tenant/{tenant}/booking-provider/${provider}/bookings`,
-    {
-      source: "PCE Rewards web booking",
-      name: input.name,
-      address: {
-        street: input.address.street,
-        unit: input.address.unit ?? null,
-        city: input.address.city,
-        state: input.address.state,
-        zip: input.address.zip,
-        country: "USA",
-      },
-      contacts,
-      customerType: "Residential",
-      customerId: input.customerId ?? undefined,
-      locationId: input.locationId ?? undefined,
-      businessUnitId: input.businessUnitId,
-      jobTypeId: input.jobTypeId,
-      campaignId: input.campaignId,
-      priority: input.priority,
-      summary: input.summary,
-      start: input.start ? input.start.toISOString() : undefined,
-      isFirstTimeClient: input.isFirstTimeClient,
-      isSendConfirmationEmail: false,
-      externalId: input.externalId,
+  return request<StBooking>("POST", `/crm/v2/tenant/{tenant}/booking-provider/${provider}/bookings`, {
+    source: "PCE Rewards web booking",
+    name: input.name,
+    address: {
+      street: input.address.street,
+      unit: input.address.unit ?? null,
+      city: input.address.city,
+      state: input.address.state,
+      zip: input.address.zip,
+      country: "USA",
     },
-  );
-  return res;
+    contacts,
+    customerType: "Residential",
+    start: input.start ? input.start.toISOString() : null,
+    summary: input.summary,
+    campaignId: input.campaignId,
+    businessUnitId: input.businessUnitId,
+    jobTypeId: input.jobTypeId,
+    priority: input.priority,
+    isFirstTimeClient: input.isFirstTimeClient,
+    uploadedImages: [],
+    isSendConfirmationEmail: false,
+    externalId: input.externalId,
+  });
+}
+
+export async function getBooking(id: number) {
+  const provider = ST_IDS.bookingProviderId;
+  const path = provider
+    ? `/crm/v2/tenant/{tenant}/booking-provider/${provider}/bookings/${id}`
+    : `/crm/v2/tenant/{tenant}/bookings/${id}`;
+  return request<StBooking>("GET", path);
 }
 
 // ── Jobs (poller) ────────────────────────────────────────────────────────────
@@ -351,6 +367,10 @@ export type StJob = {
   total?: number | null;
   businessUnitId?: number;
 };
+
+export async function getJob(id: number) {
+  return request<StJob & { locationId?: number }>("GET", `/jpm/v2/tenant/{tenant}/jobs/${id}`);
+}
 
 export async function listCompletedJobsForCustomer(customerId: number, since: Date): Promise<StJob[]> {
   const res = await request<{ data: StJob[] }>(
