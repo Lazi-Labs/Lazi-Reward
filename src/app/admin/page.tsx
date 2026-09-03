@@ -63,7 +63,20 @@ export default async function AdminOverviewPage({
   if (funnel.openCallbacks) attention.push({ text: `${funnel.openCallbacks} customer${funnel.openCallbacks === 1 ? "" : "s"} asked for a manager callback`, href: "/admin/reviews?status=submitted" });
   if (gifts.failed) attention.push({ text: `${gifts.failed} gift card${gifts.failed === 1 ? "" : "s"} failed to order`, href: "/admin/gifts?status=failed" });
   if (!isTremendousConfigured()) attention.push({ text: "Tremendous is not configured — gifts can't be ordered", href: "/admin/reviews" });
-  if (balance !== null && balance < 50 && !isTremendousSandbox()) attention.push({ text: `Tremendous balance is low (${money.format(balance)})`, href: "/admin/gifts" });
+  // Warn in units of gifts, not dollars: what matters is how many more claims
+  // the balance covers, and an unclaimed gift is already a promise to pay.
+  if (balance !== null && !isTremendousSandbox()) {
+    const perGift = gifts.perGift || 10;
+    const claimsLeft = Math.floor(balance / perGift);
+    if (claimsLeft < 10) {
+      attention.push({
+        text:
+          `Tremendous balance covers only ${claimsLeft} more gift${claimsLeft === 1 ? "" : "s"} ` +
+          `(${money.format(balance)}${gifts.offered ? `, ${gifts.offered} already promised` : ""}) — top it up`,
+        href: "/admin/gifts",
+      });
+    }
+  }
 
   return (
     <>

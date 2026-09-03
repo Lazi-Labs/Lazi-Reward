@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, ilike, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNotNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -12,6 +12,7 @@ import {
 import {
   TremendousError,
   createLinkReward,
+  getOrder,
   isTremendousConfigured,
   listCampaignProducts,
   type GiftProduct,
@@ -370,3 +371,64 @@ export async function applyWebhookEvent(evt: TremendousWebhookEvent): Promise<st
   return `applied:${evt.event}`;
 }
 
+
+// ── Delivery reconciliation ─────────────────────────────────────────────────
+
+/**
+ * Tremendous webhooks are best-effort: a delivery event can be missed entirely
+ * (a stretch of 401s while the secret was wrong is enough for Tremendous to
+ * back the endpoint off), which leaves a claimed gift stuck at `created`
+ * forever even though the customer already has their card. This reconciles
+ * from the source of truth by reading the order back.
+ *
+ * Safe to run repeatedly; only touches rows that are still `created` and old
+ * enough that Tremendous has settled them.
+ */
+export async function reconcileGiftDeliveries(opts: { olderThanMinutes?: number; limit?: number } = {}) {
+  if (!isTremendousConfigured()) return { checked: 0, updated: 0, results: {} as Record<string, string> };
+  const cutoff = new Date(Date.now() - (opts.olderThanMinutes ?? 5) * 60_000);
+  const rows = await db
+    .select()
+    .from(giftCards)
+    .where(
+      and(
+        inArray(giftCards.status, ["created"]),
+        isNotNull(giftCards.tremendousOrderId),
+        lt(giftCards.createdAt, cutoff),
+      ),
+    )
+    .limit(opts.limit ?? 100);
+
+  const results: Record<string, string> = {};
+  let updated = 0;
+  for (const row of rows) {
+    try {
+      const order = await getOrder(row.tremendousOrderId!);
+      const reward = order.rewards?.find((r) => r.id === row.tremendousRewardId) ?? order.rewards?.[0];
+      const delivery = reward?.delivery?.status?.toUpperCase();
+      const orderStatus = order.status?.toUpperCase();
+
+      const patch: Partial<typeof giftCards.$inferInsert> = { updatedAt: new Date() };
+      if (orderStatus === "CANCELED") {
+        patch.status = "canceled";
+      } else if (orderStatus === "FAILED" || delivery === "FAILED") {
+        patch.status = "failed";
+        patch.failureReason = `reconcile: order ${orderStatus}, delivery ${delivery ?? "unknown"}`;
+      } else if (delivery === "SUCCEEDED" || (orderStatus === "EXECUTED" && reward?.delivery?.method === "LINK")) {
+        // A LINK reward is in the customer's hands the moment the order executes.
+        patch.status = "delivered";
+        patch.deliveredAt = new Date();
+        if (reward?.delivery?.link && !row.redemptionLink) patch.redemptionLink = reward.delivery.link;
+      } else {
+        results[row.externalId] = `pending (order ${orderStatus ?? "?"}, delivery ${delivery ?? "?"})`;
+        continue;
+      }
+      await db.update(giftCards).set(patch).where(eq(giftCards.id, row.id));
+      updated += 1;
+      results[row.externalId] = String(patch.status);
+    } catch (err) {
+      results[row.externalId] = `error: ${err instanceof Error ? err.message : String(err)}`.slice(0, 160);
+    }
+  }
+  return { checked: rows.length, updated, results };
+}

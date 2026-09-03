@@ -89,6 +89,8 @@ export type GiftMetrics = {
   delivered: number;
   failed: number;
   spent: number;
+  /** Cost of a single gift, used to express the balance as "N gifts left". */
+  perGift: number;
   byProduct: { product: string; n: number; amount: number }[];
 };
 
@@ -104,6 +106,8 @@ export async function getGiftMetrics(since: Date, businessId?: string): Promise<
       delivered: sql<number>`COUNT(*) FILTER (WHERE ${giftCards.status} = 'delivered')`,
       failed: sql<number>`COUNT(*) FILTER (WHERE ${giftCards.status} = 'failed')`,
       spent: sql<string>`COALESCE(SUM(${giftCards.amount}) FILTER (WHERE ${giftCards.status} IN ('created','delivered')), 0)`,
+      // What one gift costs today — drives the "N gifts left" balance warning.
+      perGift: sql<string>`COALESCE(MAX(${giftCards.amount}), 0)`,
     })
     .from(giftCards)
     .where(where);
@@ -123,6 +127,7 @@ export async function getGiftMetrics(since: Date, businessId?: string): Promise<
     delivered: Number(row?.delivered ?? 0),
     failed: Number(row?.failed ?? 0),
     spent: Number(row?.spent ?? 0),
+    perGift: Number(row?.perGift ?? 0) || 10,
     byProduct: byProduct.map((p) => ({
       product: p.product ?? "—",
       n: Number(p.n),

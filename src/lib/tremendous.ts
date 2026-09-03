@@ -141,6 +141,22 @@ export async function getReward(rewardId: string) {
   return res.reward;
 }
 
+export type TremendousOrder = {
+  id: string;
+  status: string; // CUSTOMER_FUNDED | EXECUTED | CANCELED | FAILED | PENDING…
+  external_id?: string | null;
+  rewards?: Array<{
+    id: string;
+    delivery?: { status?: string; method?: string; link?: string } | null;
+  }>;
+};
+
+/** Read an order back (used to reconcile gifts whose webhook never arrived). */
+export async function getOrder(orderId: string) {
+  const res = await request<{ order: TremendousOrder }>("GET", `/orders/${encodeURIComponent(orderId)}`);
+  return res.order;
+}
+
 // ── Catalog / funding ────────────────────────────────────────────────────────
 
 export type TremendousProduct = {

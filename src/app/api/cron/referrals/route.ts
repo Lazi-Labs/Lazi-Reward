@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 
 import { db } from "@/db";
 import { contacts, referrals, referrers } from "@/db/schema";
+import { reconcileGiftDeliveries } from "@/lib/gifts";
 import { OPEN_REFERRAL_STATUSES, REFERRAL_MIN_INVOICE, completeReferral, setReferralStatus } from "@/lib/referrals";
 import {
+  findCustomerByPhone,
   getBooking,
   getJob,
   getLead,
@@ -28,28 +30,49 @@ export const dynamic = "force-dynamic";
  *  2. Lead → job (legacy fallback path): lead Converted → `hired`.
  *  3. Completed job (> $89) for that customer after the referral → completed +
  *     reward. The Worker normally gets there first; this covers it being down.
+ *
+ * Then reconciles the gift ledger against Tremendous (see
+ * `reconcileGiftDeliveries`) so a missed webhook cannot leave a claimed gift
+ * stuck at `created`.
  */
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET?.trim();
   const auth = req.headers.get("authorization") ?? "";
   if (secret && auth !== `Bearer ${secret}`) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!isServiceTitanConfigured()) return NextResponse.json({ skipped: "servicetitan_not_configured" });
+  // Gift reconciliation does not depend on ServiceTitan, so it runs either way.
+  if (!isServiceTitanConfigured()) {
+    const gifts = await reconcileGiftDeliveries().catch((err) => ({
+      checked: 0,
+      updated: 0,
+      results: { error: err instanceof Error ? err.message : String(err) },
+    }));
+    return NextResponse.json({ skipped: "servicetitan_not_configured", gifts });
+  }
 
   const rows = await db
-    .select({ r: referrals, contactId: contacts.id, refs: contacts.externalRefs, code: referrers.referralCode })
+    .select({
+      r: referrals,
+      contactId: contacts.id,
+      refs: contacts.externalRefs,
+      phone: contacts.phone,
+      name: contacts.name,
+      code: referrers.referralCode,
+    })
     .from(referrals)
     .innerJoin(contacts, eq(referrals.referredContactId, contacts.id))
     .innerJoin(referrers, eq(referrals.referrerId, referrers.id))
     .where(
       and(
         inArray(referrals.status, OPEN_REFERRAL_STATUSES),
-        sql`(${contacts.externalRefs} ->> 'st_customer_id' IS NOT NULL OR ${referrals.metadata} ->> 'st_booking_id' IS NOT NULL)`,
+        // Includes referrals with no ServiceTitan ids at all: the booking call
+        // can fail (metadata.st_pending), and those used to be skipped forever.
+        // We recover them below by matching the customer on phone.
       ),
     )
     .limit(200);
 
   const out: Record<string, string> = {};
-  for (const { r, contactId, refs, code } of rows) {
+  for (const { r, contactId, refs, phone, name, code } of rows) {
     try {
       const meta = (r.metadata ?? {}) as Record<string, unknown>;
       let stCustomerId = Number(refs?.st_customer_id) || 0;
@@ -84,6 +107,30 @@ export async function GET(req: Request) {
           }
         } else if (booking.status !== "New" && booking.status !== String(meta.st_booking_status ?? "")) {
           await db.update(referrals).set({ metadata: { ...meta, st_booking_status: booking.status } }).where(eq(referrals.id, r.id));
+        }
+      }
+
+      // 1b) No ServiceTitan ids at all (the booking/lead call failed at submit
+      //     time, or the office booked the job by hand). Recover by matching
+      //     the customer on phone, then stamp the referral marker on them.
+      if (!stCustomerId && !meta.st_booking_id && !meta.st_lead_id && phone) {
+        const found = await findCustomerByPhone(phone, name ?? undefined);
+        if (found) {
+          stCustomerId = found.id;
+          await db
+            .update(contacts)
+            .set({
+              externalRefs: sql`COALESCE(${contacts.externalRefs}, '{}'::jsonb) || ${JSON.stringify({
+                st_customer_id: String(found.id),
+              })}::jsonb`,
+              updatedAt: new Date(),
+            })
+            .where(eq(contacts.id, contactId));
+          await markCustomerReferred(found.id, code).catch((e) => console.error("markCustomerReferred", e));
+          await db
+            .update(referrals)
+            .set({ metadata: { ...meta, st_recovered_by: "phone", st_pending: false } })
+            .where(eq(referrals.id, r.id));
         }
       }
 
@@ -122,5 +169,13 @@ export async function GET(req: Request) {
       out[r.id] = `error: ${err instanceof Error ? err.message : String(err)}`.slice(0, 200);
     }
   }
-  return NextResponse.json({ checked: rows.length, out });
+  // Gift ledger: Tremendous webhooks can be missed, so reconcile claimed gifts
+  // against the order status rather than trusting the webhook alone.
+  const gifts = await reconcileGiftDeliveries().catch((err) => ({
+    checked: 0,
+    updated: 0,
+    results: { error: err instanceof Error ? err.message : String(err) },
+  }));
+
+  return NextResponse.json({ checked: rows.length, out, gifts });
 }
