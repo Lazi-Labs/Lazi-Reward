@@ -253,14 +253,34 @@ export async function attributeReferral(input: AttributeInput): Promise<Attribut
     }
   }
 
-  // Self-referral guard: same user/contact, or same phone/email as the referrer.
-  const ownerEmail = referrer.user?.email ?? referrer.contact?.email ?? null;
-  const ownerPhone = referrer.user?.phone ?? referrer.contact?.phone ?? null;
+  // Self-referral guard. The referrer's identity is more than their `users`
+  // row: the same person routinely has several contact rows (one per email or
+  // phone we've seen them under), and `users.phone` is usually empty. Collect
+  // every email/phone we know for them, so "referring yourself" under a second
+  // address is caught rather than paid out.
+  const ownerContacts = await db.query.contacts.findMany({
+    where: or(
+      referrer.userId ? eq(contacts.linkedUserId, referrer.userId) : sql`false`,
+      referrer.contactId ? eq(contacts.id, referrer.contactId) : sql`false`,
+    ),
+    columns: { id: true, email: true, phone: true },
+  });
+  const ownerEmails = new Set(
+    [referrer.user?.email, referrer.contact?.email, ...ownerContacts.map((c) => c.email)]
+      .map(norm)
+      .filter(Boolean),
+  );
+  const ownerPhones = new Set(
+    [referrer.user?.phone, referrer.contact?.phone, ...ownerContacts.map((c) => c.phone)]
+      .map(digits)
+      .filter((v) => v.length === 10),
+  );
   if (
     (referrer.userId && contact.linkedUserId && contact.linkedUserId === referrer.userId) ||
     (referrer.contactId && contact.id === referrer.contactId) ||
-    (contact.email && ownerEmail && norm(contact.email) === norm(ownerEmail)) ||
-    (contact.phone && ownerPhone && digits(contact.phone) === digits(ownerPhone))
+    ownerContacts.some((c) => c.id === contact!.id) ||
+    (contact.email && ownerEmails.has(norm(contact.email))) ||
+    (contact.phone && digits(contact.phone).length === 10 && ownerPhones.has(digits(contact.phone)))
   ) {
     return { ok: false, reason: "self_referral" };
   }
